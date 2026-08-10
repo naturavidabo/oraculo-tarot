@@ -38,11 +38,8 @@ jobs:
       - name: Validate 78 image mappings
         run: npm run validate:images
 
-      - name: Fetch public-domain Rider-Waite images
-        run: npm run fetch:cards
-
-      - name: Validate 78 downloaded card assets
-        run: npm run validate:card-assets
+      - name: Validate Spanish presentation layer
+        run: npm run validate:spanish-ui
 
       - name: Build PWA with Vite
         run: npx vite build

@@ -1,19 +1,7 @@
-ORÁCULO TAROT v0.6.0 — GITHUB PAGES
+ORÁCULO TAROT 0.8.0
 
-El archivo que GitHub necesita realmente es:
+Esta carpeta contiene una copia visible del workflow de GitHub Pages.
+El archivo operativo debe estar en:
 .github/workflows/deploy-pages.yml
 
-La copia visible de esta carpeta NO reemplaza al workflow real. Está incluida solo para que puedas verificar su contenido si al subir archivos no ves la carpeta .github.
-
-DESPUÉS DE SUBIR LA VERSIÓN A GITHUB, DEBEN VERSE EN LA RAÍZ:
-.github/
-GITHUB_PAGES_SETUP/
-src/
-public/
-package.json
-vite.config.ts
-
-Dentro de .github debe existir:
-.github/workflows/deploy-pages.yml
-
-Luego: Settings > Pages > Build and deployment > Source > GitHub Actions.
+En 0.8 las imágenes de las cartas ya no dependen de una descarga durante Actions. Si GitHub conserva por error un workflow anterior que igualmente instala y ejecuta Vite, la capa visual dispone de fallback runtime compatible con Pages.

@@ -5,7 +5,7 @@ const manifest=JSON.parse(await fs.readFile('src/data/card-images.json','utf8'))
 const outDir='public/cards';
 await fs.mkdir(outDir,{recursive:true});
 const WIDTH=360;
-const UA='ORACULO-TAROT/0.7.0 (GitHub Pages build; source: Wikimedia Commons)';
+const UA='ORACULO-TAROT/0.8.0 (GitHub Pages build; source: Wikimedia Commons)';
 
 async function fetchOne(row){
   const dest=path.join(outDir,row.assetFile);

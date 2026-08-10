@@ -5,6 +5,7 @@ import { tarotCards, tarotCardById } from '../../data/cards';
 import { addClarifierRevision, saveEvaluation } from '../../db/readings';
 import type { Orientation } from '../../types/tarot';
 import { TarotCardImage } from '../../components/TarotCardImage';
+import { claimLabel, confidenceLabel, humanCode, motifLabel } from '../../engine/presentationLabels';
 
 type HistoryItem = {
   reading:ReadingRow; cards:ReadingCardRow[]; interpretation?:InterpretationRow; favorite:boolean;
@@ -96,13 +97,14 @@ export function HistoryView({back}:{back:()=>void}){
       {!!clarifiers.length&&<div className="clarifier-list"><b>Aclaratorias activas</b>{clarifiers.map(c=><span key={c.id}>{spreads.find(s=>s.id===selected.reading.spreadId)?.positions.find(p=>p.id===c.parentPositionId)?.label??c.parentPositionId}: {tarotCardById.get(c.cardId)?.name} {c.orientation==='UPRIGHT'?'↑':'↓'}</span>)}</div>}
 
       {result && <>
-        <div className="section-title"><h2>Interpretación actual</h2><span>{result.confidence.replace('_',' ')}</span></div>
+        <div className="section-title"><h2>Interpretación actual</h2><span>{confidenceLabel[result.confidence]??result.confidence}</span></div>
         <p className="lead compact-lead">{result.directAnswer}</p>
+        {result.globalInterpretation&&<div className="interpretation-main history-interpretation"><span className="eyebrow">INTERPRETACIÓN GENERAL</span><p>{result.globalInterpretation}</p></div>}
         <div className="why-list">{result.sections.map(section=><div key={section.positionId}><b>{section.label} · {section.cardName}</b><p>{section.text}</p></div>)}</div>
         {!!result.specialCombinations?.length&&<><div className="section-title"><h2>Combinaciones especiales</h2><span>{result.specialCombinations.length}</span></div><div className="why-list">{result.specialCombinations.map(combo=><div key={combo.id}><b>{combo.label}</b><p>{combo.explanation}</p></div>)}</div></>}
-        {!!result.sequencePatterns?.length&&<><div className="section-title"><h2>Secuencias</h2></div><div className="chips">{result.sequencePatterns.map(p=><span key={p}>{p.replaceAll('_',' ')}</span>)}</div></>}
-        <div className="section-title"><h2>¿Por qué?</h2><span>Engine {selected.interpretation?.engineVersion}</span></div>
-        <div className="why-list">{result.why.map((item,index)=><div key={`${item.claim}-${index}`}><b>{item.claim.replaceAll('_',' ')}</b><p>{item.explanation}</p></div>)}</div>
+        {!!result.sequencePatterns?.length&&<><div className="section-title"><h2>Secuencias</h2></div><div className="chips">{result.sequencePatterns.map(p=><span key={p}>{humanCode(p,motifLabel)}</span>)}</div></>}
+        {result.conclusion&&<><div className="section-title"><h2>Conclusión</h2><span>tendencia</span></div><div className="conclusion-card"><p>{result.conclusion}</p></div></>}
+        <details className="explanation-details"><summary>¿Por qué esta interpretación?</summary><div className="why-list">{result.why.map((item,index)=><div key={`${item.claim}-${index}`}><b>{humanCode(item.claim,claimLabel)}</b><p>{item.explanation}</p></div>)}</div></details>
       </>}
 
       <div className="section-title"><h2>Añadir aclaratoria</h2><span>crea nueva revisión</span></div>
@@ -125,7 +127,7 @@ export function HistoryView({back}:{back:()=>void}){
 
       <div className="section-title"><h2>Historial de revisiones</h2><span>{selected.revisions.length}</span></div>
       <div className="revision-list">{selected.revisions.map(r=><div key={r.id}><b>Revisión {r.revisionNumber}</b><span>{r.reason}</span><small>{new Date(r.createdAt).toLocaleString('es-BO')}</small></div>)}</div>
-      <p className="muted">Content {selected.interpretation?.contentVersion??'—'} · Engine {selected.interpretation?.engineVersion??'—'}.</p>
+      <p className="muted">Contenido {selected.interpretation?.contentVersion??'—'} · Motor {selected.interpretation?.engineVersion??'—'}.</p>
     </section>;
   }
 

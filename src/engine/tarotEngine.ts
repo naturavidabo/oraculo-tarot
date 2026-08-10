@@ -4,6 +4,7 @@ import type { Orientation, TarotCard, TarotDimension } from '../types/tarot';
 import { contextProfiles, dimensionLabels } from './contextProfile';
 import { interpretationRequestSchema, interpretationResultSchema, type InterpretationRequest, type InterpretationResult } from './contracts';
 import { detectSequencePatterns, detectSpecialCombinations, motifList, tensionList } from './semanticRules';
+import { claimLabel, humanCode, mechanismLabel, motifLabel, tensionLabel } from './presentationLabels';
 
 const clamp = (value:number, min=-5, max=5) => Math.max(min, Math.min(max, value));
 const round = (n:number) => Number(n.toFixed(2));
@@ -39,6 +40,55 @@ function level(value:number, positive=true) {
   return 'muy bajo';
 }
 
+function contextualNuance(context:string, vectors:Partial<Record<TarotDimension,number>>, card:TarotCard) {
+  const has=(key:TarotDimension)=>vectors[key]!==undefined;
+  const v=(key:TarotDimension)=>vectors[key]??0;
+  const pieces:string[]=[];
+  if(context==='sentimientos'||context==='emocional'||context==='amor'){
+    if(has('emotion')&&v('emotion')>=4) pieces.push('la carga afectiva es importante');
+    else if(has('mentalIntensity')&&v('mentalIntensity')>=4) pieces.push('la vivencia se procesa más desde la mente, la observación o la evaluación que desde una expresión afectiva espontánea');
+    else if((has('materiality')&&v('materiality')>=4)||(has('practicalCommitment')&&v('practicalCommitment')>=4)) pieces.push('la posición habla de valorar lo invertido, la seguridad o la conveniencia de continuar más que de una emoción expansiva');
+    if((has('openness')&&v('openness')<=-2)||(has('retention')&&v('retention')>=4)) pieces.push('hay reserva para exteriorizar lo que ocurre internamente');
+    if(has('reciprocity')&&v('reciprocity')>=4) pieces.push('también existe una señal fuerte de reciprocidad emocional');
+    if(has('bondAvailability')&&v('bondAvailability')<=1) pieces.push('la disponibilidad para vincularse aparece limitada');
+  } else if(context==='pensamientos'||context==='mental'){
+    if(has('clarity')&&v('clarity')>=4) pieces.push('la mente busca definir, comprender o tomar una posición clara');
+    if(has('uncertainty')&&v('uncertainty')>=4) pieces.push('persisten dudas o falta de información suficiente');
+    if((has('conflict')&&v('conflict')>=4)||(has('hostility')&&v('hostility')>=4)) pieces.push('el pensamiento está atravesado por tensión, defensa o confrontación');
+    if(has('secrecy')&&v('secrecy')>=4) pieces.push('una parte del proceso mental se mantiene reservada');
+  } else if(context==='accion'||context==='resultado'){
+    if(has('movement')&&has('manifestation')&&v('movement')>=4&&v('manifestation')>=4) pieces.push('hay capacidad simbólica de pasar del estado interno a un movimiento visible');
+    else if((has('movement')&&v('movement')<=0)||(has('manifestation')&&v('manifestation')<=2)) pieces.push('la acción aparece frenada, lenta o todavía poco visible');
+    if(has('rupture')&&v('rupture')>=4) pieces.push('el movimiento puede implicar cortar con una forma anterior');
+    if((has('stability')&&v('stability')>=4)||(has('longTermStability')&&v('longTermStability')>=4)) pieces.push('la tendencia busca sostener o estabilizar lo construido');
+    if(card.mechanism==='DEFIENDE'||(has('resilience')&&v('resilience')>=4)) pieces.push('predomina defender una posición antes que abrir una nueva');
+  } else if(context==='intenciones'){
+    if(has('initiative')&&v('initiative')>=4) pieces.push('existe iniciativa o voluntad de hacer algo con la situación');
+    if(has('practicalCommitment')&&v('practicalCommitment')>=4) pieces.push('la intención se acompaña de inversión práctica o constancia');
+    if(has('practicalCommitment')&&v('practicalCommitment')<=2&&has('emotion')&&v('emotion')>=3) pieces.push('el interés no está igualmente respaldado por compromiso práctico');
+  } else if(context==='deseo'||context==='sexualidad'){
+    const desireValues=[has('desire')?v('desire'):undefined,has('sexuality')?v('sexuality'):undefined,has('attraction')?v('attraction'):undefined].filter((x):x is number=>x!==undefined);
+    if(desireValues.length&&Math.max(...desireValues)>=4) pieces.push('el deseo o la atracción son intensos');
+    if((has('actionImpulse')&&v('actionImpulse')<=2)||(has('manifestation')&&v('manifestation')<=2)) pieces.push('esa intensidad no se convierte automáticamente en acción');
+    if(has('fantasy')&&v('fantasy')>=4) pieces.push('parte del impulso puede permanecer en el plano de la fantasía');
+  } else if(context==='comunicacion'){
+    if(has('communication')&&v('communication')>=4&&(!has('movement')||v('movement')>=2)) pieces.push('la comunicación tiene posibilidades de exteriorizarse');
+    if(has('communication')&&v('communication')>=3&&has('movement')&&v('movement')<=0) pieces.push('hay contenido para comunicar, pero el movimiento está frenado');
+    if(has('secrecy')&&v('secrecy')>=4) pieces.push('se mantiene una cuota relevante de reserva');
+  } else if(context==='obstaculo'){
+    if(has('fear')&&v('fear')>=4) pieces.push('el miedo funciona como freno');
+    if(has('conflict')&&v('conflict')>=4) pieces.push('el conflicto absorbe energía de la situación');
+    if(has('retention')&&v('retention')>=4) pieces.push('la retención o necesidad de control dificulta abrir el proceso');
+    if(has('burden')&&v('burden')>=4) pieces.push('la sobrecarga reduce la energía disponible');
+  }
+  if(!pieces.length) return '';
+  return pieces.join('; ').replace(/^./,c=>c.toLocaleUpperCase('es'));
+}
+
+function cleanSentence(text:string){
+  return text.trim().replace(/[.!?]+$/,'');
+}
+
 function cardPositionText(card:TarotCard, orientation:Orientation, context:string, vectors:Partial<Record<TarotDimension,number>>, clarifier=false) {
   const profile = contextProfiles[context as keyof typeof contextProfiles] ?? contextProfiles.general;
   const relevant = Object.entries(vectors)
@@ -56,7 +106,8 @@ function cardPositionText(card:TarotCard, orientation:Orientation, context:strin
     ? ` Aquí pesan especialmente ${relevant.map(r => `${dimensionLabels[r.dimension] ?? r.dimension} (${level(Math.abs(r.value))})`).join(' y ')}.`
     : '';
   const prefix=clarifier?'Como aclaratoria, matiza la posición principal: ':'';
-  return `${prefix}${card.quick}${orientationText}${emphasis}`;
+  const nuance=contextualNuance(context,vectors,card);
+  return `${prefix}${cleanSentence(card.quick)}.${orientationText}${emphasis}${nuance?` ${nuance}.`:''}`;
 }
 
 function claimsFor(motifs:string[], tensions:string[], evidence:Record<string,string[]>): InterpretationResult['claims'] {
@@ -219,21 +270,126 @@ export function interpretTarot(input:InterpretationRequest):InterpretationResult
 
   const why:InterpretationResult['why']=[];
   for (const combo of specialCombinations) {
-    why.push({claim:`COMBO_${combo.id}`,explanation:combo.explanation,cards:combo.cards});
+    why.push({claim:combo.label,explanation:combo.explanation,cards:combo.cards});
   }
   for (const claim of claims) {
     const names=claim.evidence.map(id=>tarotCardById.get(id)?.name ?? id);
-    why.push({claim:claim.concept, explanation:`${claim.concept.replaceAll('_',' ').toLowerCase()}: ${names.length ? names.join(', ') : 'patrón global de la tirada'}.`, cards:claim.evidence});
+    why.push({claim:humanCode(claim.concept,claimLabel), explanation:names.length ? `Se sostiene principalmente en ${names.join(', ')}.` : 'Se sostiene en la convergencia global de la tirada.', cards:claim.evidence});
   }
   if (!why.length) {
     const ranked=Object.entries(dimensions).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,3);
-    for (const [key,value] of ranked) why.push({claim:`DIM_${key.toUpperCase()}`,explanation:`${dimensionLabels[key as TarotDimension]??key}: ${value.toFixed(1)} dentro del perfil simbólico contextual.`,cards:sums.get(key as TarotDimension)?.cards ?? []});
+    for (const [key,value] of ranked) why.push({claim:dimensionLabels[key as TarotDimension]??key,explanation:`${dimensionLabels[key as TarotDimension]??key}: ${value.toFixed(1)} dentro del perfil simbólico contextual.`,cards:sums.get(key as TarotDimension)?.cards ?? []});
   }
+
+  const ftaDirectAnswer=spread.id==='SPREAD_FTA_03'&&primaryResolved.length===3 ? (()=>{
+    const [feel,thought,action]=primaryResolved;
+    const feelNuance=contextualNuance(feel.position.context,feel.vectors,feel.card);
+    const thoughtNuance=contextualNuance(thought.position.context,thought.vectors,thought.card);
+    const actionNuance=contextualNuance(action.position.context,action.vectors,action.card);
+    const synthesis:string[]=[];
+    if((dimensions.mentalIntensity??0)>=4&&(dimensions.emotion??0)<3) synthesis.push('predomina una dinámica mental y de evaluación más que una apertura afectiva directa');
+    if((dimensions.conflict??0)>=4||(dimensions.hostility??0)>=4) synthesis.push('la tensión o actitud defensiva tiene un peso importante');
+    if((dimensions.openness??0)<=-2) synthesis.push('la apertura es limitada');
+    if((dimensions.movement??0)>=4&&(dimensions.manifestation??0)>=3) synthesis.push('aun así existe capacidad de movimiento visible');
+    const ending=synthesis.length?` En conjunto, ${synthesis.join('; ')}.`:'';
+    return `En sentimientos, ${feel.card.name} indica que ${cleanSentence(feel.card.quick).toLocaleLowerCase('es')}${feelNuance?`; ${feelNuance.toLocaleLowerCase('es')}`:''}. En pensamientos, ${thought.card.name} muestra que ${cleanSentence(thought.card.quick).toLocaleLowerCase('es')}${thoughtNuance?`; ${thoughtNuance.toLocaleLowerCase('es')}`:''}. En acción o tendencia, ${action.card.name} señala que ${cleanSentence(action.card.quick).toLocaleLowerCase('es')}${actionNuance?`; ${actionNuance.toLocaleLowerCase('es')}`:''}.${ending}`;
+  })() : '';
+  const resolvedDirectAnswer=ftaDirectAnswer||directAnswer;
+
+  const dominantDimensions=Object.entries(dimensions)
+    .sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))
+    .slice(0,3)
+    .map(([key])=>dimensionLabels[key as TarotDimension]??key);
+
+  const positionNarrative=primaryResolved.map((item,index)=>{
+    const orientationText=item.entry.orientation==='REVERSED'?' invertida':'';
+    const connector=index===0?'En':index===primaryResolved.length-1?'Finalmente, en':'En';
+    const nuance=contextualNuance(item.position.context,item.vectors,item.card);
+    const quick=cleanSentence(item.card.quick);
+    return `${connector} ${item.position.label.toLocaleLowerCase('es')}, ${item.card.name}${orientationText} aporta ${quick.charAt(0).toLocaleLowerCase('es')}${quick.slice(1)}${nuance?`; ${nuance.charAt(0).toLocaleLowerCase('es')}${nuance.slice(1)}`:''}`;
+  }).join('. ')+'.';
+
+  const motifNarrative=motifs.slice(0,3).map(code=>{
+    const label=humanCode(code,motifLabel);
+    const sentences:Record<string,string>={
+      DEEP_FEELING:'La dimensión emocional tiene un peso importante y no conviene reducir la lectura únicamente a conducta visible.',
+      HIGH_DESIRE:'La atracción o el deseo aparecen con intensidad dentro del conjunto.',
+      DESIRE_WITH_ACTION:'El impulso no queda solamente en deseo: también existen señales simbólicas de movimiento o manifestación.',
+      DESIRE_BLOCKED:'Hay intensidad, pero una parte de esa energía encuentra frenos antes de convertirse en hechos visibles.',
+      FEELING_RESTRAINED:'Lo que se siente y lo que se expresa no aparecen con la misma facilidad.',
+      COMMUNICATION_OPENING:'La secuencia favorece que algo se exteriorice, se diga o empiece a moverse.',
+      COMMUNICATION_BLOCKED:'La comunicación existe como tema, aunque está sometida a pausa, temor o dificultad para exteriorizarse.',
+      LONG_TERM_BUILD:'La lectura contiene elementos de constancia, estructura y construcción práctica.',
+      COMMITMENT_PATTERN:'Hay una convergencia simbólica hacia estructura, permanencia o compromiso.',
+      HIGH_UNCERTAINTY:'La incertidumbre es elevada, por lo que la lectura debe mantenerse en el terreno simbólico y no convertirse en afirmaciones de hecho.',
+      HIDDEN_INFORMATION:'Hay reserva o baja visibilidad; eso indica información no plenamente disponible, no una prueba de engaño.',
+      CLOSURE_TRANSFORMATION:'La forma actual de la situación parece estar atravesando un cierre o una transformación importante.',
+      RECOVERY_INTEGRATION:'El conjunto favorece recuperación, ajuste o integración gradual.',
+      AUTONOMOUS_STABILITY:'La estabilidad aparece ligada a conservar autonomía y espacio propio.',
+    };
+    return sentences[code]??`${label} aparece como uno de los temas que conectan las cartas.`;
+  }).join(' ');
+
+  const tensionNarrative=tensions.slice(0,2).map(code=>{
+    const label=humanCode(code,tensionLabel);
+    return `La principal tensión se puede resumir como “${label.toLocaleLowerCase('es')}”, por lo que dos impulsos de la tirada no avanzan al mismo ritmo.`;
+  }).join(' ');
+
+  const combinationNarrative=specialCombinations.slice(0,2).map(combo=>combo.explanation).join(' ');
+  const first=primaryResolved[0];
+  const last=primaryResolved[primaryResolved.length-1];
+  const sequenceSentence=first&&last&&first.card.id!==last.card.id
+    ? `El recorrido va desde ${first.card.name}, que ${humanCode(first.card.mechanism,mechanismLabel).toLocaleLowerCase('es')}, hasta ${last.card.name}, que ${humanCode(last.card.mechanism,mechanismLabel).toLocaleLowerCase('es')}; por eso importa leer el orden y no solo las cartas aisladas.`
+    : '';
+
+  const ftaGlobal=spread.id==='SPREAD_FTA_03'&&primaryResolved.length===3 ? (()=>{
+    const [feel,thought,action]=primaryResolved;
+    const feelNuance=contextualNuance(feel.position.context,feel.vectors,feel.card);
+    const thoughtNuance=contextualNuance(thought.position.context,thought.vectors,thought.card);
+    const actionNuance=contextualNuance(action.position.context,action.vectors,action.card);
+    const firstParagraph=`La lectura empieza en ${feel.card.name}${feel.entry.orientation==='REVERSED'?' invertida':''}, colocada en sentimientos. ${cleanSentence(feel.card.quick)}${feelNuance?`. ${cleanSentence(feelNuance)}`:''}. Esto describe el tono emocional de la consulta, pero no debe confundirse automáticamente con una intención o una acción.`;
+    const secondParagraph=`Al pasar a los pensamientos aparece ${thought.card.name}${thought.entry.orientation==='REVERSED'?' invertida':''}. ${cleanSentence(thought.card.quick)}${thoughtNuance?`. ${cleanSentence(thoughtNuance)}`:''}. Esta segunda carta muestra cómo se procesa mentalmente lo anterior y ayuda a distinguir entre lo que puede sentirse y lo que realmente se está evaluando, decidiendo o evitando.`;
+    const thirdParagraph=`En la posición de acción o tendencia, ${action.card.name}${action.entry.orientation==='REVERSED'?' invertida':''} cambia el foco hacia lo que podría manifestarse. ${cleanSentence(action.card.quick)}${actionNuance?`. ${cleanSentence(actionNuance)}`:''}. Por eso la última carta no borra las dos anteriores: indica cómo toda esa dinámica encuentra —o no— una vía de expresión.`;
+    const synthesisParts:string[]=[];
+    if((dimensions.mentalIntensity??0)>=4&&(dimensions.emotion??0)<3) synthesisParts.push('el conjunto es más mental, observador o evaluativo que abiertamente emocional');
+    if((dimensions.emotion??0)>=3.7) synthesisParts.push('hay una carga emocional que merece peso propio');
+    if((dimensions.conflict??0)>=3.7||(dimensions.hostility??0)>=3.7) synthesisParts.push('la tensión, defensa o confrontación condiciona la manera de actuar');
+    if(Object.prototype.hasOwnProperty.call(dimensions,'openness')&&(dimensions.openness??0)<=-2) synthesisParts.push('la apertura aparece limitada');
+    if((dimensions.movement??0)>=3.7&&(dimensions.manifestation??0)>=3) synthesisParts.push('sí existe una vía simbólica de movimiento o exteriorización');
+    if((dimensions.rupture??0)>=4||(dimensions.transformation??0)>=4) synthesisParts.push('la forma actual de la situación está entrando en un cierre o transformación');
+    const synthesis=synthesisParts.length
+      ? `Viendo las tres cartas juntas, ${synthesisParts.join('; ')}. La lectura, por tanto, no se reduce al significado aislado de ninguna carta: importa la secuencia entre sentir, pensar y actuar.`
+      : `Viendo las tres cartas juntas, ninguna dimensión domina por completo a las demás. La lectura depende sobre todo de cómo se enlazan sentimiento, pensamiento y acción, por lo que conviene conservar los matices de cada posición.`;
+    return [firstParagraph,secondParagraph,thirdParagraph,synthesis,motifNarrative,tensionNarrative,combinationNarrative].filter(Boolean).join('\n\n');
+  })() : '';
+
+  const globalInterpretation=ftaGlobal || [
+    `Respecto a la consulta “${parsed.question.text}”, la tirada se entiende mejor como un conjunto y no como ${primaryResolved.length} definiciones separadas.`,
+    dominantDimensions.length?`Los aspectos con mayor peso son ${dominantDimensions.join(', ')}.`:'',
+    positionNarrative,
+    motifNarrative,
+    tensionNarrative,
+    combinationNarrative,
+    sequenceSentence,
+  ].filter(Boolean).join(' ');
+
+  const connectionSummary=[
+    motifs.length?`El hilo común entre las cartas se concentra en ${motifs.slice(0,3).map(code=>humanCode(code,motifLabel).toLocaleLowerCase('es')).join(', ')}.`:'Las cartas no forman un patrón único dominante; la lectura depende especialmente de sus posiciones.',
+    tensions.length?`A la vez aparece ${tensions.slice(0,2).map(code=>humanCode(code,tensionLabel).toLocaleLowerCase('es')).join(' y ')}.`:'Las cartas no muestran una contradicción fuerte entre sí.',
+  ].join(' ');
+
+  const lastOrientation=last?.entry.orientation==='REVERSED'?' invertida':'';
+  const conclusion=last
+    ? `Como cierre de la tirada, ${last.card.name}${lastOrientation} ocupa “${last.position.label}”. ${cleanSentence(last.card.quick)}.${last.entry.orientation==='REVERSED'?` ${cleanSentence(last.card.reversal.summary)}.`:''} Al relacionarla con las cartas anteriores, esta posición marca la dirección hacia la que tiende el conjunto. Es una orientación simbólica probable, no un hecho garantizado.`
+    : 'La tirada ofrece una orientación simbólica contextual y no una predicción garantizada.';
 
   return interpretationResultSchema.parse({
     requestId:parsed.requestId,
     headline,
-    directAnswer,
+    directAnswer:resolvedDirectAnswer,
+    globalInterpretation,
+    connectionSummary,
+    conclusion,
     dimensions,
     motifs,
     tensions,

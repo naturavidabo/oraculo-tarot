@@ -25,7 +25,7 @@ export function MoreView(){
   }
 
   return <section className="page">
-    <span className="eyebrow">MÁS · ORÁCULO TAROT 0.7.0</span><h1>Herramientas</h1>
+    <span className="eyebrow">MÁS · ORÁCULO TAROT 0.8.0</span><h1>Herramientas</h1>
     <div className="feature-card static"><b>Respaldo local</b><span>Exporta lecturas, personas, notas, favoritos, evaluaciones y progreso de aprendizaje.</span></div>
     <div className="backup-actions">
       <button className="primary-cta" disabled={busy} onClick={()=>void backup()}>{busy?'Procesando…':'Crear respaldo'}</button>
@@ -35,14 +35,14 @@ export function MoreView(){
     {message&&<div className="notice-card">{message}</div>}
 
     <div className="section-title"><h2>Diagnóstico del motor</h2><span>prueba real</span></div>
-    <p className="muted">Ejecuta internamente una tirada conocida: 7 de Oros · As de Espadas · 10 de Espadas. Comprueba que el motor devuelva cartas, narrativa y explicación.</p>
+    <p className="muted">Ejecuta internamente una tirada conocida: 7 de Oros · As de Espadas · 10 de Espadas. Comprueba que el motor devuelva cartas, interpretación global, conclusión, explicación e imagen de respaldo.</p>
     <button className="secondary-cta" onClick={()=>setDiagnostic(runEngineSelfTest())}>Ejecutar diagnóstico</button>
     {diagnostic&&<div className={`diagnostic-panel ${diagnostic.ok?'ok':'fail'}`}><b>{diagnostic.ok?'✓ Motor operativo':'✗ Motor con falla'}</b>{diagnostic.checks.map(item=><div key={item.label}><span>{item.ok?'✓':'✗'} {item.label}</span><small>{item.detail}</small></div>)}</div>}
 
-    <div className="section-title"><h2>Privacidad</h2><span>offline-first</span></div>
+    <div className="section-title"><h2>Privacidad</h2><span>sin conexión</span></div>
     <p className="muted">Las lecturas se guardan en IndexedDB del dispositivo. Esta versión no necesita Supabase para conservarlas.</p>
 
     <div className="section-title"><h2>Imágenes Rider–Waite</h2><span>dominio público</span></div>
-    <p className="muted">Las 78 imágenes corresponden al Rider–Waite–Smith de Pamela Colman Smith (1910), obtenidas desde Wikimedia Commons durante la construcción de la PWA. Quedan incluidas en la versión publicada para uso offline.</p>
+    <p className="muted">La app usa una ruta visual compatible con GitHub Pages y conserva progresivamente las cartas consultadas en caché. Si existe una copia local, también puede utilizarla como respaldo.</p>
   </section>;
 }

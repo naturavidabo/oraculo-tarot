@@ -1,7 +1,13 @@
 # Fuentes visuales Rider–Waite–Smith
 
-ORÁCULO TAROT 0.7 utiliza el conjunto **Rider-Waite-Smith tarot deck (Geldard)** de Wikimedia Commons (78 archivos), correspondiente al mazo ilustrado por Pamela Colman Smith en 1910.
+ORÁCULO TAROT mantiene un manifest 78/78 de las cartas Rider–Waite–Smith.
 
-La categoría de Wikimedia Commons identifica el conjunto como Rider–Waite–Smith y las fichas de archivo utilizadas lo marcan como dominio público. Para evitar hotlink permanente, GitHub Actions descarga una copia redimensionada de cada carta durante el build y la incorpora al artefacto de la PWA.
+## Estrategia 0.8
 
-El archivo `src/data/card-images.json` conserva el nombre de archivo de origen para cada `cardId`.
+La interfaz intenta una ruta visual pública compatible con GitHub Pages y dispone de una ruta local alternativa. El Service Worker usa caché progresiva para las cartas consultadas. Con esto, la visualización no depende de que GitHub Actions descargue las 78 imágenes durante cada build.
+
+La ruta visual de respaldo sigue el conjunto `yunruse/tarot` (`cards/color/<código>.jpg`). Ese proyecto expone las imágenes mediante GitHub Media/LFS. El contenido interpretativo de ORÁCULO TAROT es propio: no se importan las interpretaciones de ese repositorio.
+
+## Privacidad
+
+La petición de una imagen pública no contiene la pregunta ni el contenido de la tirada. Las lecturas y perfiles permanecen en IndexedDB local.

@@ -1,17 +1,16 @@
-ORÁCULO TAROT v0.7.0 — BETA FUNCIONAL VISUAL
+ORÁCULO TAROT v0.8.0 — ESTABILIZACIÓN NARRATIVA Y VISUAL
 
 1. NO borres tu repositorio.
 2. Descomprime este ZIP.
 3. Sube TODO su contenido a la raíz del repositorio y reemplaza los archivos existentes.
-4. Verifica que package.json diga 0.7.0.
-5. Verifica .github/workflows/deploy-pages.yml.
-6. GitHub Actions debe mostrar estas etapas antes del build:
-   - Validate Tarot content
-   - Validate curated combinations
-   - Validate 78 image mappings
-   - Fetch public-domain Rider-Waite images
-   - Validate 78 downloaded card assets
-   - Build PWA with Vite
-7. Solo si todas están verdes se publicará Pages.
+4. Verifica que package.json diga 0.8.0.
+5. La app ya NO depende de que .github se reemplace para mostrar las cartas: la capa visual tiene fallback compatible con GitHub Pages.
+6. Si .github/workflows/deploy-pages.yml sí se reemplaza, Actions agregará además validación de los 78 mapeos y de la presentación en español.
+7. Espera que el run llegue a Build PWA with Vite y Deploy.
 
-IMPORTANTE: las 78 imágenes se descargan DURANTE el build de GitHub y quedan incluidas en la PWA publicada. No tienes que subir 78 PNG manualmente.
+PRUEBAS EN EL CELULAR DESPUÉS DE PUBLICAR:
+- Abrir Biblioteca y comprobar que se vean cartas reales.
+- Tirada virtual de 3 cartas y comprobar imágenes + orientación.
+- Interpretar y revisar: Interpretación general → Lectura por posición → Cómo se conectan → Conclusión.
+- Entrar a Más → Diagnóstico del motor.
+- Entrar a Tarot → Cámara y probar captura/previsualización.

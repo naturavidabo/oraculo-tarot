@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0 — Estabilización narrativa, visual y base de cámara
+
+- Traduce la capa visible de interpretación: confianza, motivos, tensiones, mecanismos, categorías y afirmaciones se presentan en español.
+- Añade interpretación general narrativa, conexión entre cartas y conclusión separada.
+- Motor narrativo 0.5: mejora la tirada Sentimientos · Pensamientos · Acción y evita inferencias por vectores ausentes.
+- Reorganiza los detalles técnicos dentro de «¿Por qué?» y Modo Profesor.
+- Añade fallback visual remoto compatible con GitHub Pages y caché progresiva de cartas Rider–Waite.
+- La visualización ya no depende de que el workflow descargue 78 imágenes durante el build.
+- Añade base de Cámara: captura/selección local de foto, previsualización y guía de encuadre; reconocimiento automático aún no activo.
+- Diagnóstico interno comprueba 7 de Oros · As de Espadas · 10 de Espadas, narrativa, conclusión, explicación y cadena visual.
+- Añade validación de presentación en español y auditoría de release 0.8.
+
 ## 0.7.0 — Beta funcional visual
 
 - Integra las 78 imágenes Rider–Waite–Smith de dominio público durante el build de GitHub Pages.

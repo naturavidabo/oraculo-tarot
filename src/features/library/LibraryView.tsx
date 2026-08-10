@@ -3,6 +3,7 @@ import { tarotCards } from '../../data/cards';
 import { dimensionLabels } from '../../engine/contextProfile';
 import type { Suit, TarotDimension } from '../../types/tarot';
 import { TarotCardImage } from '../../components/TarotCardImage';
+import { expressionModeLabel, humanCode, mechanismLabel, suitLabel } from '../../engine/presentationLabels';
 
 export function LibraryView() {
   const [query, setQuery] = useState('');
@@ -22,7 +23,7 @@ export function LibraryView() {
     <button className="text-button" onClick={() => setSelected(null)}>← Biblioteca</button>
     <div className="detail-card">
       <TarotCardImage card={active} className="library-detail-image" eager />
-      <span className="eyebrow">{active.arcana === 'major' ? 'ARCANO MAYOR' : active.suit.toUpperCase()}</span>
+      <span className="eyebrow">{active.arcana === 'major' ? 'ARCANO MAYOR' : (suitLabel[active.suit]??active.suit).toUpperCase()}</span>
       <h1>{active.name}</h1>
       <p className="lead">{active.essence}</p>
       <p>{active.quick}</p>
@@ -32,11 +33,11 @@ export function LibraryView() {
       <div className="chips">{active.light.map(item=><span key={item}>{item}</span>)}</div>
       <div className="section-title"><h2>Sombra</h2></div>
       <div className="chips">{active.shadow.map(item=><span key={item}>{item}</span>)}</div>
-      <div className="section-title"><h2>Invertida</h2><span>{active.reversal.modes.join(' · ')}</span></div>
+      <div className="section-title"><h2>Invertida</h2><span>{active.reversal.modes.map(mode=>expressionModeLabel[mode]??mode).join(' · ')}</span></div>
       <p className="muted">{active.reversal.summary}</p>
-      <div className="section-title"><h2>Perfil simbólico</h2><span>Content 1.0</span></div>
+      <div className="section-title"><h2>Perfil simbólico</h2><span>Contenido 1.0</span></div>
       <div className="vector-list">{Object.entries(active.vectors).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,12).map(([k,v]) => <div key={k}><span>{dimensionLabels[k as TarotDimension] ?? k}</span><b>{v}</b></div>)}</div>
-      <div className="section-title"><h2>Modo profesor</h2><span>{active.mechanism}</span></div>
+      <div className="section-title"><h2>Modo profesor</h2><span>{humanCode(active.mechanism,mechanismLabel)}</span></div>
       <p className="muted">{active.teacherNote}</p>
     </div>
   </section>;
@@ -50,7 +51,7 @@ export function LibraryView() {
     <div className="library-grid">
       {cards.map(card => <button key={card.id} className="library-card" onClick={()=>setSelected(card.id)}>
         <TarotCardImage card={card} className="library-card-image" />
-        <b>{card.name}</b><small>{card.arcana === 'major' ? 'Arcano Mayor' : card.suit}</small>
+        <b>{card.name}</b><small>{card.arcana === 'major' ? 'Arcano Mayor' : (suitLabel[card.suit]??card.suit)}</small>
       </button>)}
     </div>
   </section>;

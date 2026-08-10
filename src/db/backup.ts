@@ -33,7 +33,7 @@ export async function createBackupBlob(){
     flashcardReviews:await db.flashcardReviews.toArray(),
   };
   const payloadText=JSON.stringify(payload);
-  const envelope={format:'ORACULO_TAROT_BACKUP' as const,version:1 as const,createdAt:new Date().toISOString(),appVersion:'0.7.0',dbSchema:3,checksum:await sha256(payloadText),payload};
+  const envelope={format:'ORACULO_TAROT_BACKUP' as const,version:1 as const,createdAt:new Date().toISOString(),appVersion:'0.8.0',dbSchema:3,checksum:await sha256(payloadText),payload};
   return new Blob([JSON.stringify(envelope,null,2)],{type:'application/json'});
 }
 

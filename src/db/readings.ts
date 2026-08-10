@@ -64,13 +64,13 @@ export async function addClarifierRevision(readingId:string,parentPositionId:str
       {positionId:parentPositionId,parentPositionId,cardId,orientation,role:'CLARIFIER' as const},
     ],
     options:{depth:'NORMAL',style:'NORMAL',drawMethod:reading.drawMethod,reversalsEnabled:true},
-    versions:{content:'1.0.0',engine:'0.4.0'},
+    versions:{content:'1.0.0',engine:'0.5.0'},
   };
   const result=interpretTarot(request);
   await db.transaction('rw',db.readings,db.readingRevisions,db.readingCards,db.interpretations,db.readingEvents,async()=>{
     await db.readingRevisions.add({id:revisionId,readingId,revisionNumber,reason:`CLARIFIER:${parentPositionId}`,createdAt:now});
     await db.readingCards.bulkAdd(cardRowsFromRequest(readingId,revisionId,request,now));
-    await db.interpretations.add({id:crypto.randomUUID(),readingId,revisionId,contentVersion:'1.0.0',engineVersion:'0.4.0',structuredResult:result,createdAt:now});
+    await db.interpretations.add({id:crypto.randomUUID(),readingId,revisionId,contentVersion:'1.0.0',engineVersion:'0.5.0',structuredResult:result,createdAt:now});
     await db.readings.update(readingId,{currentRevisionId:revisionId,status:'REVISED',updatedAt:now});
     await db.readingEvents.add({id:crypto.randomUUID(),readingId,revisionId,type:'CLARIFIER_ADDED',payload:{parentPositionId,cardId,orientation},createdAt:now});
   });

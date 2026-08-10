@@ -9,6 +9,7 @@ import { dimensionLabels } from '../../engine/contextProfile';
 import { classifyQuestion, recommendSpreads } from '../../engine/questionClassifier';
 import { cutVirtualDeck, prepareVirtualDeck, type PreparedCard } from '../../engine/drawEngine';
 import { TarotCardBack, TarotCardImage } from '../../components/TarotCardImage';
+import { categoryLabel, claimLabel, confidenceLabel, humanCode, mechanismLabel, motifLabel, tensionLabel } from '../../engine/presentationLabels';
 
 type Pick = { cardId:string; orientation:Orientation };
 type DrawMethod = 'PHYSICAL'|'VIRTUAL';
@@ -25,7 +26,7 @@ function errorMessage(error:unknown){
     CARD_UNKNOWN:'Una de las cartas no existe en el mazo local.',
     CARD_DUPLICATE:'Una carta está repetida en la tirada.',
   };
-  return map[message]??`No se pudo interpretar la tirada: ${message}`;
+  return map[message]??'No se pudo interpretar la tirada. Revisa las cartas seleccionadas y vuelve a intentarlo.';
 }
 
 function ReadingResult({
@@ -41,50 +42,68 @@ function ReadingResult({
   const topDimensions=Object.entries(result.dimensions)
     .sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))
     .slice(0,presentation==='DEEP'||presentation==='TEACHER'?10:6);
+  const primarySections=result.sections.filter(x=>x.role==='PRIMARY');
   const showNormal=presentation!=='QUICK';
   const showDeep=presentation==='DEEP'||presentation==='TEACHER';
   const showTeacher=presentation==='TEACHER';
 
-  return <section className="page">
+  return <section className="page reading-result-page">
     <button className="text-button" onClick={restart}>← Nueva lectura</button>
-    <span className="eyebrow">ORÁCULO TAROT · BETA 0.7</span>
+    <span className="eyebrow">ORÁCULO TAROT · BETA 0.8</span>
     <h1>{result.headline}</h1>
     <p className="lead">{result.directAnswer}</p>
+
+    <div className="interpretation-main">
+      <span className="eyebrow">INTERPRETACIÓN GENERAL</span>
+      <p>{result.globalInterpretation}</p>
+    </div>
 
     <div className="mode-switch">
       {(['QUICK','NORMAL','DEEP','TEACHER'] as Presentation[]).map(mode=><button key={mode} className={presentation===mode?'selected':''} onClick={()=>setPresentation(mode)}>{mode==='QUICK'?'Rápida':mode==='NORMAL'?'Normal':mode==='DEEP'?'Profunda':'Profesor'}</button>)}
     </div>
 
-    <div className="status-card">
-      <div><strong>{result.confidence.replace('_',' ')}</strong><span>confianza</span></div>
-      <div><strong>{result.motifs.length}</strong><span>patrones</span></div>
-      <div><strong>{result.tensions.length}</strong><span>tensiones</span></div>
+    <div className="status-card reading-status">
+      <div><strong>{confidenceLabel[result.confidence]??result.confidence}</strong><span>confianza interpretativa</span></div>
+      <div><strong>{primarySections.length}</strong><span>cartas principales</span></div>
+      <div><strong>{spreadName}</strong><span>tirada</span></div>
     </div>
 
-    <div className="reading-strip adaptive result-cards">{result.sections.filter(x=>x.role==='PRIMARY').map(section=>{
+    <div className="reading-strip adaptive result-cards">{primarySections.map(section=>{
       const card=tarotCardById.get(section.cardId)!;
       return <div key={section.positionId}>
         <TarotCardImage card={card} orientation={section.orientation} className="result-card-image" eager />
         <b>{card.name}</b>
-        <small>{section.label} · {section.orientation==='UPRIGHT'?'↑':'↓'}</small>
+        <small>{section.label} · {section.orientation==='UPRIGHT'?'Derecha':'Invertida'}</small>
       </div>;
     })}</div>
 
     {showNormal && <>
       <div className="section-title"><h2>Lectura por posición</h2><span>{spreadName}</span></div>
-      <div className="why-list">{result.sections.map(section=><div key={section.positionId}><b>{section.label} · {section.cardName}</b><p>{section.text}</p></div>)}</div>
-      {!!result.motifs.length && <><div className="section-title"><h2>Patrones detectados</h2></div><div className="chips">{result.motifs.map(m=><span key={m}>{m.replaceAll('_',' ')}</span>)}</div></>}
-      {!!result.tensions.length && <><div className="section-title"><h2>Tensiones</h2></div><div className="chips">{result.tensions.map(m=><span key={m}>{m.replaceAll('_',' ')}</span>)}</div></>}
-      {!!result.specialCombinations.length && <><div className="section-title"><h2>Combinaciones especiales</h2><span>{result.specialCombinations.length}</span></div><div className="why-list">{result.specialCombinations.map(combo=><div key={combo.id}><b>{combo.label}</b><p>{combo.explanation}</p></div>)}</div></>}
-      <div className="section-title"><h2>¿Por qué?</h2><span>{result.confidence}</span></div>
-      <div className="why-list">{result.why.map((item,index)=><div key={`${item.claim}-${index}`}><b>{item.claim.replaceAll('_',' ')}</b><p>{item.explanation}</p></div>)}</div>
+      <div className="why-list position-reading">{result.sections.map(section=><div key={section.positionId}><b>{section.label} · {section.cardName}</b><p>{section.text}</p></div>)}</div>
+
+      <div className="section-title"><h2>Cómo se conectan las cartas</h2><span>síntesis</span></div>
+      <div className="interpretation-secondary"><p>{result.connectionSummary}</p></div>
+
+      {!!result.specialCombinations.length && <div className="connection-list">{result.specialCombinations.map(combo=><article key={combo.id}><b>{combo.label}</b><p>{combo.explanation}</p></article>)}</div>}
+
+      <div className="section-title"><h2>Conclusión</h2><span>tendencia</span></div>
+      <div className="conclusion-card"><p>{result.conclusion}</p></div>
+
+      <details className="explanation-details">
+        <summary>¿Por qué la aplicación llega a esta interpretación?</summary>
+        <div className="why-list">{result.why.map((item,index)=><div key={`${item.claim}-${index}`}><b>{humanCode(item.claim,claimLabel)}</b><p>{item.explanation}</p></div>)}</div>
+      </details>
     </>}
 
     {showDeep && <>
-      <div className="section-title"><h2>Perfil simbólico</h2><span>0–5 / ejes ±5</span></div>
+      {(result.motifs.length>0||result.tensions.length>0)&&<>
+        <div className="section-title"><h2>Claves de la lectura</h2><span>motor simbólico</span></div>
+        <div className="chips">{result.motifs.map(m=><span key={m}>{humanCode(m,motifLabel)}</span>)}{result.tensions.map(t=><span key={t}>{humanCode(t,tensionLabel)}</span>)}</div>
+      </>}
+      <div className="section-title"><h2>Perfil simbólico</h2><span>escala interna</span></div>
       <div className="vector-list">{topDimensions.map(([key,value])=><div key={key}><span>{dimensionLabels[key as TarotDimension]??key}</span><b>{value.toFixed(1)}</b></div>)}</div>
-      {!!result.transitions.length && <><div className="section-title"><h2>Secuencia</h2><span>mecanismos</span></div><div className="transition-line">{result.transitions.map((t,i)=><span key={`${t}-${i}`}>{t.replaceAll('_',' ')}</span>)}</div></>}
-      {!!result.sequencePatterns.length && <><div className="section-title"><h2>Patrones de secuencia</h2><span>motor</span></div><div className="chips">{result.sequencePatterns.map(p=><span key={p}>{p.replaceAll('_',' ')}</span>)}</div></>}
+      {!!result.transitions.length && <><div className="section-title"><h2>Secuencia</h2><span>cómo evoluciona</span></div><div className="transition-line">{result.transitions.map((t,i)=><span key={`${t}-${i}`}>{humanCode(t,mechanismLabel)}</span>)}</div></>}
+      {!!result.sequencePatterns.length && <><div className="section-title"><h2>Patrones de secuencia</h2><span>lectura avanzada</span></div><div className="chips">{result.sequencePatterns.map(p=><span key={p}>{humanCode(p,motifLabel)}</span>)}</div></>}
       {!!result.safeguards.length && <><div className="section-title"><h2>Lectura responsable</h2></div><div className="why-list safeguards">{result.safeguards.map(text=><div key={text}><p>{text}</p></div>)}</div></>}
     </>}
 
@@ -92,7 +111,7 @@ function ReadingResult({
       <div className="section-title"><h2>Modo Profesor</h2><span>carta por carta</span></div>
       <div className="teacher-grid">{result.sections.map(section=>{
         const card=tarotCardById.get(section.cardId)!;
-        return <article key={section.positionId}><b>{section.label} · {card.name}</b><p>{card.teacherNote}</p><small>Mecanismo: {card.mechanism.replaceAll('_',' ')}</small></article>;
+        return <article key={section.positionId}><b>{section.label} · {card.name}</b><p>{card.teacherNote}</p><small>Mecanismo: {humanCode(card.mechanism,mechanismLabel)}</small></article>;
       })}</div>
     </>}
 
@@ -146,7 +165,7 @@ export function TarotView() {
         spread:{id:spread.id,version:spread.version},
         cards:positions.map(position=>({positionId:position.id,cardId:picks[position.id].cardId,orientation:picks[position.id].orientation})),
         options:{depth:'NORMAL' as const,style:'NORMAL' as const,drawMethod:method,reversalsEnabled:reversals},
-        versions:{content:'1.0.0',engine:'0.4.0'},
+        versions:{content:'1.0.0',engine:'0.5.0'},
       };
       const interpreted=interpretTarot(request);
       setResult(interpreted);
@@ -158,7 +177,7 @@ export function TarotView() {
   if(result) return <ReadingResult result={result} spreadName={spread.name} savedId={savedId} presentation={presentation} setPresentation={setPresentation} restart={resetDraw}/>;
 
   return <section className="page">
-    <span className="eyebrow">NUEVA LECTURA · ORÁCULO TAROT 0.7</span>
+    <span className="eyebrow">NUEVA LECTURA · ORÁCULO TAROT 0.8</span>
     <h1>{spread.name}</h1>
     <p className="muted">Saca las cartas y ORÁCULO TAROT mostrará la imagen Rider–Waite y la interpretación contextual. La pregunta es recomendable, pero ya no bloquea la lectura.</p>
 
@@ -166,7 +185,7 @@ export function TarotView() {
     {!question.trim()&&<div className="notice-card info">Sin pregunta escrita: al interpretar se usará <b>“Lectura general de la tirada”</b>.</div>}
 
     {recommendations.length>0 && <div className="recommend-box">
-      <div className="section-title compact"><h2>Tirada recomendada</h2><span>{analysis.category}</span></div>
+      <div className="section-title compact"><h2>Tirada recomendada</h2><span>{categoryLabel[analysis.category]??'General'}</span></div>
       {recommendations.map((rec,index)=><button key={rec.spread.id} className={`recommend-card ${spreadId===rec.spread.id?'active':''}`} onClick={()=>changeSpread(rec.spread.id)}><div><b>{index===0?'★ ':''}{rec.spread.name}</b><span>{rec.spread.cardCount} cartas · compatibilidad {rec.score}/100</span></div><p>{rec.reason}</p></button>)}
     </div>}
 

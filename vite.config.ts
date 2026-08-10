@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'ORÁCULO TAROT',
         short_name: 'ORÁCULO',
-        description: 'Tarot Rider-Waite offline-first con biblioteca, tiradas físicas y virtuales e interpretación local.',
+        description: 'Tarot Rider-Waite con funcionamiento sin conexión, biblioteca, tiradas físicas y virtuales e interpretación local.',
         theme_color: '#07111f',
         background_color: '#07111f',
         display: 'standalone',
@@ -28,7 +28,16 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
-        globIgnores: ['branding/oraculo-tarot-cover.png','**/branding/oraculo-tarot-cover.png']
+        globIgnores: ['branding/oraculo-tarot-cover.png','**/branding/oraculo-tarot-cover.png'],
+        runtimeCaching: [{
+          urlPattern: /^https:\/\/media\.githubusercontent\.com\/media\/yunruse\/tarot\/gh-pages\/cards\/color\/.*\.jpg$/,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'rws-card-images-v1',
+            cacheableResponse: { statuses: [0, 200] },
+            expiration: { maxEntries: 78, maxAgeSeconds: 60 * 60 * 24 * 365 }
+          }
+        }]
       }
     })
   ]

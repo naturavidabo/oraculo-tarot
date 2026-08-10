@@ -1,7 +1,7 @@
 {
   "name": "oraculo-tarot-pwa",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,13 +13,14 @@
     "smoke:selector": "node scripts/smoke-selector.cjs",
     "smoke:engine": "node scripts/smoke-engine.cjs",
     "validate:combinations": "node scripts/validate-combinations.mjs",
-    "test:core": "npm run release:audit && npm run validate:content && npm run validate:combinations && npm run validate:images && npm run validate:pages && npm run smoke:selector && npm run smoke:engine",
+    "test:core": "npm run release:audit && npm run validate:content && npm run validate:combinations && npm run validate:images && npm run validate:spanish-ui && npm run validate:pages && npm run smoke:selector && npm run smoke:engine",
     "release:audit": "node scripts/release-audit.mjs",
     "validate:pages": "node scripts/validate-pages.mjs",
     "build:strict": "npm run typecheck && vite build",
     "validate:images": "node scripts/validate-image-manifest.mjs",
     "fetch:cards": "node scripts/fetch-card-images.mjs",
-    "validate:card-assets": "node scripts/validate-card-assets.mjs"
+    "validate:card-assets": "node scripts/validate-card-assets.mjs",
+    "validate:spanish-ui": "node scripts/validate-spanish-ui.mjs"
   },
   "dependencies": {
     "dexie": "4.4.4",

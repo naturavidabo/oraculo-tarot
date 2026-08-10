@@ -8,6 +8,7 @@ import { HistoryView } from '../features/tarot/HistoryView';
 import { LearnView } from '../features/tarot/LearnView';
 import { PeopleView } from '../features/people/PeopleView';
 import { MoreView } from '../features/more/MoreView';
+import { CameraView } from '../features/camera/CameraView';
 
 export function App(){
   const [tab,setTab]=useState<Tab>('home');
@@ -17,6 +18,7 @@ export function App(){
     {tab==='home'&&<HomeView onNewReading={()=>openTarot('reading')} onLibrary={()=>openTarot('library')}/>} 
     {tab==='tarot'&&tarotScreen==='hub'&&<TarotHub go={setTarotScreen}/>} 
     {tab==='tarot'&&tarotScreen==='reading'&&<TarotView/>}
+    {tab==='tarot'&&tarotScreen==='camera'&&<CameraView back={()=>setTarotScreen('hub')} startManual={()=>setTarotScreen('reading')}/>}
     {tab==='tarot'&&tarotScreen==='library'&&<div><LibraryView/><button className="floating-back" onClick={()=>setTarotScreen('hub')}>← Tarot</button></div>}
     {tab==='tarot'&&tarotScreen==='history'&&<HistoryView back={()=>setTarotScreen('hub')}/>} 
     {tab==='tarot'&&tarotScreen==='learn'&&<LearnView back={()=>setTarotScreen('hub')}/>} 
