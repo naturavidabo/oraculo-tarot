@@ -1,0 +1,10 @@
+ORÁCULO TAROT v0.6.0 — VERSIÓN SANEADA
+
+1. No borres el repositorio.
+2. Descomprime el ZIP.
+3. Sube TODO el contenido a la raíz del repositorio reemplazando los archivos existentes.
+4. Confirma que package.json muestre 0.6.0 y que exista package-lock.json.
+5. Confirma .github/workflows/deploy-pages.yml.
+6. GitHub Actions debe ejecutar instalación, test:core, build y deploy.
+
+Esta versión fue preparada para corregir los fallos de build detectados en 0.5.x.
