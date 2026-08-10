@@ -25,6 +25,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,json,webp,png}'],
+        maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
         globIgnores: ['branding/oraculo-tarot-cover.png','**/branding/oraculo-tarot-cover.png']

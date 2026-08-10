@@ -1,4 +1,4 @@
-name: Deploy PWA to GitHub Pages
+name: Deploy ORÁCULO TAROT to GitHub Pages
 
 on:
   push:
@@ -20,28 +20,47 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Node
+
+      - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Validate ORÁCULO TAROT core
-        run: npm run test:core
-      - name: Build PWA
-        run: npm run build
-      - name: Configure Pages
+
+      - name: Validate Tarot content
+        run: npm run validate:content
+
+      - name: Validate curated combinations
+        run: npm run validate:combinations
+
+      - name: Validate 78 image mappings
+        run: npm run validate:images
+
+      - name: Fetch public-domain Rider-Waite images
+        run: npm run fetch:cards
+
+      - name: Validate 78 downloaded card assets
+        run: npm run validate:card-assets
+
+      - name: Build PWA with Vite
+        run: npx vite build
+
+      - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
+
   deploy:
+    needs: build
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    needs: build
-    runs-on: ubuntu-latest
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

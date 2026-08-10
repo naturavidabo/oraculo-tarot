@@ -3,6 +3,7 @@ import { tarotCards } from '../../data/cards';
 import { db, type LearningProgressRow } from '../../db/schema';
 import { dueLearningCardIds, learningProgressMap, recordLearningResult, saveCardNote, type ReviewResult } from '../../db/learning';
 import type { TarotCard } from '../../types/tarot';
+import { TarotCardImage } from '../../components/TarotCardImage';
 
 type LearnTab='ROUTES'|'FLASHCARDS'|'QUIZ'|'PROGRESS';
 
@@ -73,7 +74,7 @@ function Flashcards({refreshProgress}:{refreshProgress:()=>Promise<void>}){
     <div className="study-counter">Tarjeta {index+1} de {queue.length}</div>
     <button className={`flashcard ${revealed?'revealed':''}`} onClick={()=>setRevealed(true)}>
       <span className="eyebrow">{cardLabel(card)}</span>
-      <div className="tarot-placeholder study-card"><span>{card.number??'✦'}</span></div>
+      <TarotCardImage card={card} className="study-card-image" eager />
       <h2>{card.name}</h2>
       {!revealed?<p>Piensa primero en su esencia, luz y sombra. Luego toca para revelar.</p>:<>
         <p className="flash-essence">{card.essence}</p>

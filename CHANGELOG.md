@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0 — Beta funcional visual
+
+- Integra las 78 imágenes Rider–Waite–Smith de dominio público durante el build de GitHub Pages.
+- Mapeo visual 78/78 con validación específica de 7 de Oros, As de Espadas y 10 de Espadas.
+- Las imágenes quedan dentro del artefacto de Pages y el Service Worker las precachea para uso offline.
+- Tirada virtual muestra cada carta real, incluida orientación invertida.
+- Biblioteca, resultado, historial y aprendizaje usan imágenes reales.
+- Interpretar ya no queda bloqueado si la pregunta está vacía: usa “Lectura general de la tirada”.
+- Mensajes visibles de cartas faltantes y errores del motor.
+- Diagnóstico interno end-to-end con 7 de Oros · As de Espadas · 10 de Espadas.
+- Flujo de build reforzado: valida manifest → descarga 78 imágenes → valida archivos → compila PWA.
+
 ## 0.6.1 — Hotfix PWA / Workbox
 - Corrige el fallo real de GitHub Actions en `vite-plugin-pwa`: Workbox rechazaba `branding/oraculo-tarot-cover.png` por superar el límite de 2 MiB.
 - Elimina el PNG redundante del paquete y conserva el WebP optimizado usado por la interfaz.

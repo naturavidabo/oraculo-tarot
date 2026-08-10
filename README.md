@@ -1,65 +1,23 @@
-# ORÁCULO TAROT PWA
+# ORÁCULO TAROT
 
-PWA offline-first para Tarot Rider-Waite. El proyecto está preparado para crecer más adelante hacia Astrología, Personas, Matriz y Quirología sin rehacer el núcleo.
+**Versión 0.7.0 — Beta funcional visual**
 
-## Estado actual
-**Versión de trabajo 0.5.0** — aprendizaje avanzado, progreso local y publicación GitHub Pages reforzada.
-
-Incluye:
-- identidad visual oficial ORÁCULO TAROT;
-- 78 cartas Rider-Waite estructuradas (Content Pack 1.0);
-- biblioteca offline y perfiles locales;
-- selector inteligente de tiradas;
-- cartas físicas y tirada virtual;
-- motor contextual 0.4 con motivos, tensiones y secuencias;
-- combinaciones especiales curadas;
-- cartas aclaratorias y revisiones inmutables;
-- registro de resultado observado;
-- respaldo/restauración local con comprobación SHA-256;
-- modos Rápida, Normal, Profunda y Profesor;
-- historial con favoritos, revisiones y evaluación;
-- **Modo Aprender v0.5** con rutas, flashcards, repetición adaptativa, quiz, notas y progreso 78/78;
-- progreso de aprendizaje incluido en los respaldos;
-- workflow real `.github/workflows/deploy-pages.yml` para GitHub Pages;
-- copia visible de verificación en `GITHUB_PAGES_SETUP/` y control automático `validate:pages`.
-
-## Arquitectura
-- React + TypeScript
-- Vite
-- Dexie / IndexedDB
-- Zod
-- vite-plugin-pwa
-
-El núcleo Tarot no requiere Supabase ni servidor para funcionar.
-
-## Pruebas del núcleo
-```bash
-npm run test:core
-```
-Incluye validación del Content Pack, reglas especiales, presencia del workflow GitHub Pages, sintaxis, selector de tiradas y pruebas semánticas de referencia.
-
-## Desarrollo
-```bash
-npm install
-npm run dev
-```
-
-## Build
-```bash
-npm run build
-```
+PWA offline-first de Tarot Rider–Waite con tiradas físicas/virtuales, interpretación local, biblioteca visual, historial y aprendizaje.
 
 ## Publicación
-El repositorio está preparado para GitHub Pages mediante `.github/workflows/deploy-pages.yml`.
+GitHub Actions ejecuta esta cadena antes de desplegar:
 
-Al subir la versión verifica en GitHub que exista exactamente:
-```text
-.github/workflows/deploy-pages.yml
-```
-También se incluye `SUBIDA-GITHUB-LEEME.txt` con el control rápido.
+1. instala dependencias;
+2. valida Content Pack 78/78;
+3. valida combinaciones;
+4. valida el manifest de las 78 imágenes;
+5. descarga copias redimensionadas del Rider–Waite–Smith de dominio público desde Wikimedia Commons;
+6. comprueba que existen 78 archivos de imagen válidos;
+7. compila la PWA con Vite;
+8. publica `dist` en GitHub Pages.
 
-## Versiones internas
-- App: 0.5.0
-- Tarot Content: 1.0.0
-- Tarot Engine: 0.4.0
-- Database schema: 3
+## Datos personales
+Las lecturas, personas, notas y progreso se guardan localmente en IndexedDB mediante Dexie. Supabase no es requisito para esta versión.
+
+## Imágenes
+Rider–Waite–Smith, Pamela Colman Smith (1910). Fuente de las copias utilizadas en el build: Wikimedia Commons, conjunto `Rider-Waite-Smith tarot deck (Geldard)`, dominio público.

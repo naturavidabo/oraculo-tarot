@@ -4,6 +4,7 @@ import { spreads } from '../../data/spreads';
 import { tarotCards, tarotCardById } from '../../data/cards';
 import { addClarifierRevision, saveEvaluation } from '../../db/readings';
 import type { Orientation } from '../../types/tarot';
+import { TarotCardImage } from '../../components/TarotCardImage';
 
 type HistoryItem = {
   reading:ReadingRow; cards:ReadingCardRow[]; interpretation?:InterpretationRow; favorite:boolean;
@@ -91,7 +92,7 @@ export function HistoryView({back}:{back:()=>void}){
       <div className="history-meta"><span>{spread?.name??selected.reading.spreadId}</span><span>{selected.reading.drawMethod==='VIRTUAL'?'Tirada virtual':'Cartas físicas'}</span><span>{new Date(selected.reading.createdAt).toLocaleString('es-BO')}</span></div>
       <button className="secondary-cta" onClick={()=>void toggleFavorite(selected)}>{selected.favorite?'★ Quitar de favoritas':'☆ Marcar favorita'}</button>
 
-      <div className="reading-strip adaptive">{primaryCards.map(entry=>{const card=tarotCardById.get(entry.cardId);return <div key={entry.id}><div className="tarot-placeholder"><span>{card?.number??'✦'}</span></div><b>{card?.name??entry.cardId}</b><small>{entry.orientation==='UPRIGHT'?'↑ Derecha':'↓ Invertida'}</small></div>})}</div>
+      <div className="reading-strip adaptive result-cards">{primaryCards.map(entry=>{const card=tarotCardById.get(entry.cardId);return <div key={entry.id}>{card?<TarotCardImage card={card} orientation={entry.orientation} className="history-card-image"/>:<div className="tarot-image-fallback"><span>✦</span></div>}<b>{card?.name??entry.cardId}</b><small>{entry.orientation==='UPRIGHT'?'↑ Derecha':'↓ Invertida'}</small></div>})}</div>
       {!!clarifiers.length&&<div className="clarifier-list"><b>Aclaratorias activas</b>{clarifiers.map(c=><span key={c.id}>{spreads.find(s=>s.id===selected.reading.spreadId)?.positions.find(p=>p.id===c.parentPositionId)?.label??c.parentPositionId}: {tarotCardById.get(c.cardId)?.name} {c.orientation==='UPRIGHT'?'↑':'↓'}</span>)}</div>}
 
       {result && <>
