@@ -1,10 +1,9 @@
-ORÁCULO TAROT v0.6.0 — VERSIÓN SANEADA
+ORÁCULO TAROT v0.6.1 — HOTFIX PWA SANEADO
 
-1. No borres el repositorio.
-2. Descomprime el ZIP.
-3. Sube TODO el contenido a la raíz del repositorio reemplazando los archivos existentes.
-4. Confirma que package.json muestre 0.6.0 y que exista package-lock.json.
-5. Confirma .github/workflows/deploy-pages.yml.
-6. GitHub Actions debe ejecutar instalación, test:core, build y deploy.
+1. NO borres el repositorio.
+2. Descomprime este ZIP y sube TODO a la raíz, reemplazando archivos existentes.
+3. GitHub puede conservar el antiguo branding/oraculo-tarot-cover.png; NO importa: vite.config.ts lo excluye explícitamente del precache.
+4. Confirma package.json = 0.6.1 y .github/workflows/deploy-pages.yml presente.
+5. Actions debe pasar: instalar → validar cartas → validar combinaciones → Vite build → Pages.
 
-Esta versión fue preparada para corregir los fallos de build detectados en 0.5.x.
+Causa corregida: Workbox rechazaba un PNG legado de 2.34 MB; la app usa el WebP optimizado.

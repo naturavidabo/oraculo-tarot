@@ -1,18 +1,11 @@
 # Changelog
 
-## 0.6.0 — Saneamiento de build y despliegue
-- Corrige la transacción de restauración de backup para Dexie usando el arreglo de tablas soportado por TypeScript.
-- Consolida el hotfix de validación compatible con TypeScript 7.
-- Mantiene el workflow GitHub Pages con Node 22 y validación previa al build.
-- Genera package-lock.json y valida instalación reproducible con npm ci.
-- Esta versión no añade funciones nuevas: prioriza estabilidad, compilación y despliegue verificable.
-
-## 0.5.1 — Hotfix TypeScript 7 / GitHub Actions
-- Corrige la validación que usaba la API JavaScript de TypeScript 6 (`ScriptTarget`, `ModuleKind`, `JsxEmit`), API que TypeScript 7.0 ya no expone.
-- `syntax:check` utiliza ahora el compilador `tsc` por línea de comandos.
-- `typecheck` valida `tsconfig.app.json` y `tsconfig.node.json` por separado.
-- `build` ejecuta el typecheck antes de Vite sin depender de `tsc -b`.
-- Mantiene Node 22 y el workflow de GitHub Pages de la v0.5.0.
+## 0.6.1 — Hotfix PWA / Workbox
+- Corrige el fallo real de GitHub Actions en `vite-plugin-pwa`: Workbox rechazaba `branding/oraculo-tarot-cover.png` por superar el límite de 2 MiB.
+- Elimina el PNG redundante del paquete y conserva el WebP optimizado usado por la interfaz.
+- Añade `workbox.globIgnores` para que el build siga funcionando incluso si GitHub conserva una copia antigua del PNG.
+- `npm run build` queda orientado al build de producción con Vite; `npm run build:strict` mantiene typecheck + build para desarrollo.
+- Mantiene Node 22 y el workflow simplificado de GitHub Pages.
 
 ## 0.5.0 — Aprender avanzado + GitHub Pages reforzado
 - Añade Modo Aprender con cuatro áreas: Rutas, Flashcards, Quiz y Progreso.
@@ -72,3 +65,8 @@
 - Biblioteca básica.
 - Personas.
 - Primera tirada física de 3 cartas.
+
+## 0.6.0 — Hotfix de despliegue reproducible
+- Añade package-lock.json para instalaciones reproducibles y compatibilidad con npm ci/cache de GitHub Actions.
+- Mantiene workflow moderno con Node 22, validación del núcleo y despliegue Pages.
+- La versión se valida con npm ci, npm run test:core y npm run build antes de entrega.

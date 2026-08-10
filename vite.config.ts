@@ -26,7 +26,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,json,webp,png}'],
         navigateFallback: 'index.html',
-        cleanupOutdatedCaches: true
+        cleanupOutdatedCaches: true,
+        globIgnores: ['branding/oraculo-tarot-cover.png','**/branding/oraculo-tarot-cover.png']
       }
     })
   ]

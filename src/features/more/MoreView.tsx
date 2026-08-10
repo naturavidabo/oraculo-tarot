@@ -23,7 +23,7 @@ export function MoreView(){
   }
 
   return <section className="page">
-    <span className="eyebrow">MÁS · ORÁCULO TAROT 0.5</span><h1>Herramientas</h1>
+    <span className="eyebrow">MÁS · ORÁCULO TAROT 0.6.1</span><h1>Herramientas</h1>
     <div className="feature-card static"><b>Respaldo local</b><span>Exporta lecturas, personas, notas, favoritos, evaluaciones y ahora también tu progreso de aprendizaje. El archivo incluye comprobación SHA-256 de integridad.</span></div>
     <div className="backup-actions">
       <button className="primary-cta" disabled={busy} onClick={()=>void backup()}>{busy?'Procesando…':'Crear respaldo'}</button>

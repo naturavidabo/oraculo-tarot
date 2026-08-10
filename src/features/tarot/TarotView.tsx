@@ -155,7 +155,7 @@ export function TarotView() {
   if(result) return <ReadingResult result={result} spreadName={spread.name} savedId={savedId} presentation={presentation} setPresentation={setPresentation} restart={resetDraw}/>;
 
   return <section className="page">
-    <span className="eyebrow">NUEVA LECTURA · ORÁCULO TAROT 0.5</span>
+    <span className="eyebrow">NUEVA LECTURA · ORÁCULO TAROT 0.6.1</span>
     <h1>{spread.name}</h1>
     <p className="muted">Escribe tu pregunta, deja que ORÁCULO TAROT sugiera la tirada y elige entre tus cartas físicas o el mazo virtual.</p>
 

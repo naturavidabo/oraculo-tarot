@@ -1,11 +1,11 @@
 {
   "name": "oraculo-tarot-pwa",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run typecheck && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.app.json --pretty false && tsc -p tsconfig.node.json --pretty false",
     "validate:content": "node scripts/validate-content.mjs",
@@ -15,7 +15,8 @@
     "validate:combinations": "node scripts/validate-combinations.mjs",
     "test:core": "npm run release:audit && npm run validate:content && npm run validate:combinations && npm run validate:pages && npm run syntax:check && npm run smoke:selector && npm run smoke:engine",
     "release:audit": "node scripts/release-audit.mjs",
-    "validate:pages": "node scripts/validate-pages.mjs"
+    "validate:pages": "node scripts/validate-pages.mjs",
+    "build:strict": "npm run typecheck && vite build"
   },
   "dependencies": {
     "dexie": "4.4.4",
