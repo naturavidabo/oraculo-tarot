@@ -1,0 +1,4 @@
+const fs=require('fs'); const path=require('path'); const ts=require('typescript');
+const root=path.join(__dirname,'..','src'); let failed=false; let count=0;
+function walk(dir){for(const name of fs.readdirSync(dir)){const p=path.join(dir,name);const st=fs.statSync(p);if(st.isDirectory())walk(p);else if(/\.tsx?$/.test(name)){count++;const source=fs.readFileSync(p,'utf8');const out=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX},reportDiagnostics:true,fileName:p});for(const d of out.diagnostics||[]){if(d.category===ts.DiagnosticCategory.Error){failed=true;console.error('✗',p,ts.flattenDiagnosticMessageText(d.messageText,' '));}}}}}
+walk(root); if(failed)process.exit(1); console.log(`✓ Sintaxis TypeScript válida en ${count} archivos`);

@@ -1,0 +1,22 @@
+const fs=require('fs');const path=require('path');const os=require('os');const ts=require('typescript');
+const out=fs.mkdtempSync(path.join(os.tmpdir(),'oraculo-engine-'));fs.mkdirSync(path.join(out,'data'),{recursive:true});fs.mkdirSync(path.join(out,'engine'),{recursive:true});
+for(const [src,dst] of [['src/data/specialCombinations.ts','data/specialCombinations.js'],['src/engine/semanticRules.ts','engine/semanticRules.js']]){
+  const js=ts.transpileModule(fs.readFileSync(src,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
+  fs.writeFileSync(path.join(out,dst),js);
+}
+const rules=require(path.join(out,'engine/semanticRules.js'));
+let failed=false;const ok=(condition,label)=>{if(condition)console.log(`✓ ${label}`);else{failed=true;console.error(`✗ ${label}`)}};
+const up=(cardId)=>({cardId,orientation:'UPRIGHT'});
+let matches=rules.detectSpecialCombinations([up('RWS_M_21'),up('RWS_M_00')]);
+ok(matches.some(x=>x.id==='WORLD_FOOL_SEQUENCE'),'Mundo → Loco activa reinicio de ciclo');
+matches=rules.detectSpecialCombinations([up('RWS_M_00'),up('RWS_M_21')]);
+ok(!matches.some(x=>x.id==='WORLD_FOOL_SEQUENCE'),'Loco → Mundo no activa la regla ordenada inversa');
+matches=rules.detectSpecialCombinations([up('RWS_M_15'),up('RWS_W_01')]);
+ok(matches.some(x=>x.id==='DEVIL_ACE_WANDS'),'Diablo + As de Bastos refuerza deseo sin afirmar acción');
+const sequence=rules.detectSequencePatterns([up('RWS_M_12'),up('RWS_M_13'),up('RWS_M_14')]);
+ok(sequence.includes('SUSPENSION_TO_TRANSFORMATION_TO_INTEGRATION'),'Colgado → Muerte → Templanza detecta transición completa');
+const motifs=rules.motifList({desire:4.8,sexuality:4.9,attraction:4.6,movement:-1,manifestation:1.2,actionImpulse:1.5,fear:4});
+ok(motifs.includes('HIGH_DESIRE')&&motifs.includes('DESIRE_BLOCKED'),'Deseo alto + baja manifestación produce DESIRE_BLOCKED');
+const tensions=rules.tensionList({desire:4.8,sexuality:4.5,attraction:4.4,manifestation:1.4});
+ok(tensions.includes('DESIRE_VS_MANIFESTATION'),'Tensión deseo vs manifestación detectada');
+fs.rmSync(out,{recursive:true,force:true});if(failed)process.exit(1);
