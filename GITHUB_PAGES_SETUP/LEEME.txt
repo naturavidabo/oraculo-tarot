@@ -1,4 +1,4 @@
-ORÁCULO TAROT 0.8.0
+ORÁCULO TAROT 0.9.0
 
 Esta carpeta contiene una copia visible del workflow de GitHub Pages.
 El archivo operativo debe estar en:

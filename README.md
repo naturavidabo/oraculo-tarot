@@ -1,6 +1,6 @@
 # ORÁCULO TAROT
 
-**Versión 0.8.0 — Estabilización narrativa, visual y base de cámara**
+**Versión 0.9.0 — Estabilización narrativa, visual y base de cámara**
 
 PWA de Tarot Rider–Waite con tiradas físicas/virtuales, interpretación local en español, biblioteca, historial, aprendizaje y funcionamiento offline progresivo.
 
@@ -26,3 +26,7 @@ Lecturas, personas, notas y progreso se guardan localmente en IndexedDB mediante
 ## Cámara
 
 0.8 prepara el flujo de captura local. La futura identificación automática seguirá una etapa separada: detección de carta → corrección de perspectiva → clasificación entre 78 cartas → orientación → confianza → confirmación del usuario.
+
+
+## 0.9.0 — estabilización visual
+La aplicación usa una fuente GitHub raw no-LFS, Wikimedia Commons y copia local como rutas de respaldo para las 78 cartas. En Más → Diagnóstico visual se puede comprobar la carga real de 78/78 imágenes en el dispositivo.

@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'ORÁCULO TAROT',
         short_name: 'ORÁCULO',
-        description: 'Tarot Rider-Waite con funcionamiento sin conexión, biblioteca, tiradas físicas y virtuales e interpretación local.',
+        description: 'Tarot Rider-Waite con biblioteca, tiradas físicas y virtuales, interpretación local y diagnóstico visual.',
         theme_color: '#07111f',
         background_color: '#07111f',
         display: 'standalone',
@@ -24,20 +24,31 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,json,webp,png}'],
+        globPatterns: ['**/*.{js,css,html,svg,json,webp,png,jpg,jpeg}'],
         maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
         globIgnores: ['branding/oraculo-tarot-cover.png','**/branding/oraculo-tarot-cover.png'],
-        runtimeCaching: [{
-          urlPattern: /^https:\/\/media\.githubusercontent\.com\/media\/yunruse\/tarot\/gh-pages\/cards\/color\/.*\.jpg$/,
-          handler: 'CacheFirst',
-          options: {
-            cacheName: 'rws-card-images-v1',
-            cacheableResponse: { statuses: [0, 200] },
-            expiration: { maxEntries: 78, maxAgeSeconds: 60 * 60 * 24 * 365 }
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/raw\.githubusercontent\.com\/seven102161\/elaine-tarot-cards\/main\/cards\/.*\.jpg$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'rws-card-images-v2',
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 78, maxAgeSeconds: 60 * 60 * 24 * 365 }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/(commons|upload)\.wikimedia\.org\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'rws-card-images-wikimedia-v1',
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 78, maxAgeSeconds: 60 * 60 * 24 * 365 }
+            }
           }
-        }]
+        ]
       }
     })
   ]

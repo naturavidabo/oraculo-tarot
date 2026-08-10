@@ -41,3 +41,7 @@ body{background:radial-gradient(circle at 18% -8%,rgba(80,45,122,.38) 0,transpar
 .notice-card span{display:block;margin-top:6px;color:var(--muted);line-height:1.45}.history-interpretation{margin-top:12px}
 @media(max-width:520px){.reading-status{grid-template-columns:1.05fr .75fr 1.2fr}.reading-status div{padding:13px 5px}.reading-status div:last-child strong{font-size:.68rem}}
 .interpretation-main p{white-space:pre-line}
+
+/* ORÁCULO TAROT 0.9 · carga visual robusta */
+.tarot-image-loading{aspect-ratio:.5833;border-radius:10px;border:1px solid rgba(239,217,148,.24);background:linear-gradient(150deg,#10243a,#091522 72%);display:grid;place-items:center;text-align:center;padding:8px;color:var(--gold2);animation:tarotPulse 1.2s ease-in-out infinite alternate}.tarot-image-loading span{font-size:1.65rem}.tarot-image-loading small{font-size:.68rem;color:#b6c0cc}.tarot-image-fallback em{display:block;font-style:normal;font-size:.6rem;color:#8f9baa;margin-top:4px}@keyframes tarotPulse{from{opacity:.58}to{opacity:1}}
+.diagnostic-panel>span{display:block;margin-top:9px;color:var(--muted)}.diagnostic-panel>small{display:block;padding:2px 0;color:#d7dce4}

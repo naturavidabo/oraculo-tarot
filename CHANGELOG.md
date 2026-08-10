@@ -1,3 +1,14 @@
+# ORÁCULO TAROT — CHANGELOG
+
+## 0.9.0
+- Estabilización visual del mazo Rider-Waite.
+- Nueva fuente de imágenes GitHub raw no-LFS con mapeo correcto de arcanos y figuras.
+- Wikimedia Commons y copia local como respaldos.
+- Carga con timeout y fallback automático.
+- Diagnóstico visual 78/78 desde la propia aplicación.
+- Cache de imágenes actualizado para funcionamiento progresivamente offline.
+- Mantiene motor narrativo 0.5, interpretación general en español, cámara base y respaldo local.
+
 # Changelog
 
 ## 0.8.0 — Estabilización narrativa, visual y base de cámara
