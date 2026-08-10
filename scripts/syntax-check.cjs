@@ -1,4 +1,23 @@
-const fs=require('fs'); const path=require('path'); const ts=require('typescript');
-const root=path.join(__dirname,'..','src'); let failed=false; let count=0;
-function walk(dir){for(const name of fs.readdirSync(dir)){const p=path.join(dir,name);const st=fs.statSync(p);if(st.isDirectory())walk(p);else if(/\.tsx?$/.test(name)){count++;const source=fs.readFileSync(p,'utf8');const out=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX},reportDiagnostics:true,fileName:p});for(const d of out.diagnostics||[]){if(d.category===ts.DiagnosticCategory.Error){failed=true;console.error('✗',p,ts.flattenDiagnosticMessageText(d.messageText,' '));}}}}}
-walk(root); if(failed)process.exit(1); console.log(`✓ Sintaxis TypeScript válida en ${count} archivos`);
+const { spawnSync } = require('node:child_process');
+
+const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+const projects = ['tsconfig.app.json', 'tsconfig.node.json'];
+
+for (const project of projects) {
+  const result = spawnSync(
+    npx,
+    ['--no-install', 'tsc', '-p', project, '--pretty', 'false'],
+    { stdio: 'inherit' },
+  );
+
+  if (result.error) {
+    console.error(`✗ No se pudo ejecutar TypeScript CLI para ${project}:`, result.error.message);
+    process.exit(1);
+  }
+
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
+}
+
+console.log('✓ TypeScript validado mediante la CLI de TypeScript 7');

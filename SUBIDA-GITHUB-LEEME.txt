@@ -1,10 +1,10 @@
-ORÁCULO TAROT v0.5.0 — CONTROL RÁPIDO DE SUBIDA
+ORÁCULO TAROT v0.5.1 — HOTFIX GITHUB ACTIONS / TYPESCRIPT 7
 
 1. Descomprime el ZIP.
-2. Sube TODO el contenido de la carpeta oraculo-tarot-pwa-v0.5.0 al repositorio.
-3. En GitHub verifica que aparezca la carpeta .github.
-4. Entra a .github > workflows y confirma deploy-pages.yml.
-5. En Settings > Pages selecciona GitHub Actions.
-6. En Actions espera el flujo "Deploy PWA to GitHub Pages".
+2. Sube TODO el contenido de oraculo-tarot-pwa-v0.5.1 al repositorio actual.
+3. Permite reemplazar package.json, README.md, CHANGELOG.md y scripts/syntax-check.cjs.
+4. Verifica que .github/workflows/deploy-pages.yml siga presente.
+5. GitHub Actions debe ejecutar Node 22 > npm install > test:core > build > deploy.
 
-IMPORTANTE: no es necesario subir v0.1, v0.2, v0.3 o v0.4 antes. v0.5.0 es acumulativa.
+Este hotfix corrige el error: Cannot read properties of undefined (reading 'ES2022').
+La causa era el uso de la API JavaScript del compilador, que TypeScript 7.0 ya no expone.

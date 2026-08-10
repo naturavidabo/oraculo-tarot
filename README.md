@@ -3,7 +3,7 @@
 PWA offline-first para Tarot Rider-Waite. El proyecto está preparado para crecer más adelante hacia Astrología, Personas, Matriz y Quirología sin rehacer el núcleo.
 
 ## Estado actual
-**Versión de trabajo 0.5.0** — aprendizaje avanzado, progreso local y publicación GitHub Pages reforzada.
+**Versión de trabajo 0.5.1** — hotfix de compatibilidad con TypeScript 7 y GitHub Actions.
 
 Incluye:
 - identidad visual oficial ORÁCULO TAROT;
@@ -59,7 +59,7 @@ Al subir la versión verifica en GitHub que exista exactamente:
 También se incluye `SUBIDA-GITHUB-LEEME.txt` con el control rápido.
 
 ## Versiones internas
-- App: 0.5.0
+- App: 0.5.1
 - Tarot Content: 1.0.0
 - Tarot Engine: 0.4.0
 - Database schema: 3

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 — Hotfix TypeScript 7 / GitHub Actions
+- Corrige la validación que usaba la API JavaScript de TypeScript 6 (`ScriptTarget`, `ModuleKind`, `JsxEmit`), API que TypeScript 7.0 ya no expone.
+- `syntax:check` utiliza ahora el compilador `tsc` por línea de comandos.
+- `typecheck` valida `tsconfig.app.json` y `tsconfig.node.json` por separado.
+- `build` ejecuta el typecheck antes de Vite sin depender de `tsc -b`.
+- Mantiene Node 22 y el workflow de GitHub Pages de la v0.5.0.
+
 ## 0.5.0 — Aprender avanzado + GitHub Pages reforzado
 - Añade Modo Aprender con cuatro áreas: Rutas, Flashcards, Quiz y Progreso.
 - Añade repetición adaptativa local por carta con estados NEW, LEARNING, REVIEW y MASTERED.
