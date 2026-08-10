@@ -1,1 +1,3 @@
-Esta carpeta se completa automáticamente durante GitHub Actions con 78 miniaturas Rider–Waite–Smith de dominio público obtenidas desde Wikimedia Commons. No subas manualmente las imágenes.
+ORÁCULO TAROT 0.9.1
+Esta carpeta se rellena automáticamente con 78 JPEG Rider-Waite durante `npm install`/GitHub Actions.
+Los archivos desplegados quedan disponibles localmente en la PWA y se precachean para uso offline.

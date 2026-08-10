@@ -1,14 +1,8 @@
 import imageManifest from './card-images.json';
 
-export type CardImageRow = {
-  cardId: string;
-  sourceFile: string;
-  assetFile: string;
-};
-
-const rows = imageManifest as CardImageRow[];
-export const cardImageById = new Map(rows.map(row => [row.cardId, row]));
-
+export type CardImageRow = { cardId:string; sourceFile:string; assetFile:string; };
+const rows=imageManifest as CardImageRow[];
+export const cardImageById=new Map(rows.map(row=>[row.cardId,row]));
 const RAW_BASE='https://raw.githubusercontent.com/seven102161/elaine-tarot-cards/main/cards';
 
 function externalCode(cardId:string){
@@ -22,33 +16,22 @@ function externalCode(cardId:string){
   return suffix?`${suit[minor[1]]}${suffix}`:'';
 }
 
-export function cardImagePath(cardId:string) {
+export function cardImagePath(cardId:string){
   const row=cardImageById.get(cardId);
-  return row ? `${import.meta.env.BASE_URL}cards/${row.assetFile}` : '';
+  return row?`${import.meta.env.BASE_URL}cards/${row.assetFile}`:'';
 }
-
-export function cardImageRemotePath(cardId:string){
-  const code=externalCode(cardId);
-  return code ? `${RAW_BASE}/${code}.jpg` : '';
-}
-
+export function cardImageRemotePath(cardId:string){const code=externalCode(cardId);return code?`${RAW_BASE}/${code}.jpg`:'';}
 export function cardImageCommonsPath(cardId:string){
-  const row=cardImageById.get(cardId);
-  if(!row) return '';
+  const row=cardImageById.get(cardId);if(!row)return '';
   const filename=encodeURIComponent(row.sourceFile).replaceAll('%20','_');
   return `https://commons.wikimedia.org/wiki/Special:Redirect/file/${filename}?width=420`;
 }
-
 export function cardImageCandidates(cardId:string){
-  // Orden deliberado: fuente GitHub raw no-LFS -> Wikimedia Commons -> copia local si existe.
-  // La versión 0.9 no depende de que Actions descargue imágenes en public/cards.
-  return [cardImageRemotePath(cardId),cardImageCommonsPath(cardId),cardImagePath(cardId)].filter(Boolean);
+  // 0.9.1: SIEMPRE local primero. Las fuentes externas son solo emergencia.
+  return [cardImagePath(cardId),cardImageRemotePath(cardId),cardImageCommonsPath(cardId)].filter(Boolean);
 }
-
-export function cardImageSourcePage(cardId:string) {
-  const row=cardImageById.get(cardId);
-  if(!row) return '';
+export function cardImageSourcePage(cardId:string){
+  const row=cardImageById.get(cardId);if(!row)return '';
   return `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(row.sourceFile).replaceAll('%20','_')}`;
 }
-
-export function cardExternalCode(cardId:string){ return externalCode(cardId); }
+export function cardExternalCode(cardId:string){return externalCode(cardId);}

@@ -1,5 +1,13 @@
 # ORÁCULO TAROT — CHANGELOG
 
+## 0.9.1
+- Estabilización definitiva del mazo local: 78 imágenes se descargan en build y quedan dentro de la PWA publicada.
+- `postinstall` prepara y valida las cartas incluso si persiste un workflow anterior.
+- Ruta local pasa a ser la fuente visual primaria.
+- Diagnóstico visual comprueba solo archivos locales, no servidores externos.
+- Diagnóstico del motor queda separado de imágenes y elimina el falso fallo del 7 de Oros.
+- JPG locales incluidos en el precache para funcionamiento offline.
+
 ## 0.9.0
 - Estabilización visual del mazo Rider-Waite.
 - Nueva fuente de imágenes GitHub raw no-LFS con mapeo correcto de arcanos y figuras.

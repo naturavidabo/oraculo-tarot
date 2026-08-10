@@ -1,16 +1,11 @@
-ORÁCULO TAROT v0.9.0 — ESTABILIZACIÓN NARRATIVA Y VISUAL
+ORÁCULO TAROT v0.9.1 — ESTABILIZACIÓN LOCAL DEL MAZO
 
-1. NO borres tu repositorio.
+1. NO borres el repositorio.
 2. Descomprime este ZIP.
-3. Sube TODO su contenido a la raíz del repositorio y reemplaza los archivos existentes.
-4. Verifica que package.json diga 0.9.0.
-5. La app ya NO depende de que .github se reemplace para mostrar las cartas: la capa visual tiene fallback compatible con GitHub Pages.
-6. Si .github/workflows/deploy-pages.yml sí se reemplaza, Actions agregará además validación de los 78 mapeos y de la presentación en español.
-7. Espera que el run llegue a Build PWA with Vite y Deploy.
-
-PRUEBAS EN EL CELULAR DESPUÉS DE PUBLICAR:
-- Abrir Biblioteca y comprobar que se vean cartas reales.
-- Tirada virtual de 3 cartas y comprobar imágenes + orientación.
-- Interpretar y revisar: Interpretación general → Lectura por posición → Cómo se conectan → Conclusión.
-- Entrar a Más → Diagnóstico del motor.
-- Entrar a Tarot → Cámara y probar captura/previsualización.
+3. Sube TODO su contenido a la raíz y reemplaza archivos existentes.
+4. Confirma que package.json diga 0.9.1.
+5. GitHub Actions debe ejecutar npm install. En ese paso, postinstall descargará y validará 78 cartas locales.
+6. Después el workflow vuelve a validar 78/78 y ejecuta Vite.
+7. Si una sola imagen no puede prepararse, el deploy debe FALLAR; no se publicará una beta incompleta.
+8. Tras publicar: Más → Diagnóstico visual → debe mostrar 78/78 imágenes LOCALES operativas.
+9. Diagnóstico del motor debe evaluarse separado de las imágenes.

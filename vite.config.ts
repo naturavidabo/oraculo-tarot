@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       includeAssets: ['icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png','branding/oraculo-tarot-cover.webp'],
       manifest: {
         name: 'ORÁCULO TAROT',
@@ -28,13 +28,15 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
         globIgnores: ['branding/oraculo-tarot-cover.png','**/branding/oraculo-tarot-cover.png'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/raw\.githubusercontent\.com\/seven102161\/elaine-tarot-cards\/main\/cards\/.*\.jpg$/,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'rws-card-images-v2',
+              cacheName: 'rws-card-images-emergency-v3',
               cacheableResponse: { statuses: [0, 200] },
               expiration: { maxEntries: 78, maxAgeSeconds: 60 * 60 * 24 * 365 }
             }
