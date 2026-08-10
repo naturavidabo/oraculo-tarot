@@ -3,7 +3,7 @@
 PWA offline-first para Tarot Rider-Waite. El proyecto está preparado para crecer más adelante hacia Astrología, Personas, Matriz y Quirología sin rehacer el núcleo.
 
 ## Estado actual
-**Versión de trabajo 0.4.0** — robustez del motor, combinaciones curadas, aclaratorias, revisiones, evaluación y respaldo local.
+**Versión de trabajo 0.5.0** — aprendizaje avanzado, progreso local y publicación GitHub Pages reforzada.
 
 Incluye:
 - identidad visual oficial ORÁCULO TAROT;
@@ -12,15 +12,16 @@ Incluye:
 - selector inteligente de tiradas;
 - cartas físicas y tirada virtual;
 - motor contextual 0.4 con motivos, tensiones y secuencias;
-- biblioteca inicial de combinaciones especiales curadas;
-- cartas aclaratorias con peso secundario y vínculo a la posición original;
-- revisiones inmutables: una aclaratoria crea una nueva revisión sin destruir la original;
-- registro de resultado observado (coincidió / parcial / no coincidió / indeterminado);
-- respaldo/restauración local con comprobación SHA-256 de integridad;
+- combinaciones especiales curadas;
+- cartas aclaratorias y revisiones inmutables;
+- registro de resultado observado;
+- respaldo/restauración local con comprobación SHA-256;
 - modos Rápida, Normal, Profunda y Profesor;
 - historial con favoritos, revisiones y evaluación;
-- módulo Aprender inicial;
-- PWA preparada para GitHub Pages.
+- **Modo Aprender v0.5** con rutas, flashcards, repetición adaptativa, quiz, notas y progreso 78/78;
+- progreso de aprendizaje incluido en los respaldos;
+- workflow real `.github/workflows/deploy-pages.yml` para GitHub Pages;
+- copia visible de verificación en `GITHUB_PAGES_SETUP/` y control automático `validate:pages`.
 
 ## Arquitectura
 - React + TypeScript
@@ -35,7 +36,7 @@ El núcleo Tarot no requiere Supabase ni servidor para funcionar.
 ```bash
 npm run test:core
 ```
-Incluye validación del Content Pack, reglas especiales, sintaxis, selector de tiradas y pruebas semánticas de referencia.
+Incluye validación del Content Pack, reglas especiales, presencia del workflow GitHub Pages, sintaxis, selector de tiradas y pruebas semánticas de referencia.
 
 ## Desarrollo
 ```bash
@@ -51,8 +52,14 @@ npm run build
 ## Publicación
 El repositorio está preparado para GitHub Pages mediante `.github/workflows/deploy-pages.yml`.
 
+Al subir la versión verifica en GitHub que exista exactamente:
+```text
+.github/workflows/deploy-pages.yml
+```
+También se incluye `SUBIDA-GITHUB-LEEME.txt` con el control rápido.
+
 ## Versiones internas
-- App: 0.4.0
+- App: 0.5.0
 - Tarot Content: 1.0.0
 - Tarot Engine: 0.4.0
-- Database schema: 2
+- Database schema: 3

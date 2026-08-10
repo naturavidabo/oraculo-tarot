@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0 — Aprender avanzado + GitHub Pages reforzado
+- Añade Modo Aprender con cuatro áreas: Rutas, Flashcards, Quiz y Progreso.
+- Añade repetición adaptativa local por carta con estados NEW, LEARNING, REVIEW y MASTERED.
+- Añade dominio 0–100, rachas, fecha de última revisión y próxima revisión.
+- Añade historial de repasos y distingue Flashcard de Quiz.
+- Añade quiz automático de esencia con 4 opciones y retroalimentación inmediata.
+- Añade notas personales por carta desde Flashcards sin alterar el contenido oficial.
+- Migra ArcanaDB a esquema 3 con learningProgress y flashcardReviews.
+- Incluye aprendizaje y repasos dentro del respaldo/restauración local.
+- Refuerza `.github/workflows/deploy-pages.yml`: instala, valida núcleo, compila y despliega.
+- Añade `validate:pages` para impedir considerar válida una versión si falta el workflow.
+- Añade copia visible del workflow e instrucciones de subida para evitar omitir `.github`.
+- Mantiene Tarot Engine 0.4.0; esta versión mejora aprendizaje, persistencia y despliegue, no modifica las reglas base de interpretación.
+
 ## 0.4.0 — Motor robusto + Aclaratorias + Revisión + Backup
 - Añade biblioteca de combinaciones especiales curadas sobre el motor vectorial.
 - Añade detección de secuencias: Mundo→Loco, Luna→Sol, 4 Espadas→8 Bastos y otras reglas de referencia.

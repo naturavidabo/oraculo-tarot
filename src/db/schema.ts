@@ -53,6 +53,27 @@ export type EvaluationRow = {
 export type ReadingEventRow = { id:string; readingId:string; revisionId?:string; type:string; payload?:unknown; createdAt:string };
 export type SettingRow = { id:string; value:unknown; updatedAt:string };
 
+export type LearningState = 'NEW'|'LEARNING'|'REVIEW'|'MASTERED';
+export type LearningProgressRow = {
+  id:string;
+  cardId:string;
+  state:LearningState;
+  mastery:number;
+  correct:number;
+  incorrect:number;
+  streak:number;
+  lastReview?:string;
+  nextReview?:string;
+  updatedAt:string;
+};
+export type FlashcardReviewRow = {
+  id:string;
+  cardId:string;
+  result:'AGAIN'|'HARD'|'GOOD'|'EASY';
+  source:'FLASHCARD'|'QUIZ';
+  reviewedAt:string;
+};
+
 class OraculoTarotDB extends Dexie {
   people!: EntityTable<PersonRow, 'id'>;
   readings!: EntityTable<ReadingRow, 'id'>;
@@ -64,6 +85,8 @@ class OraculoTarotDB extends Dexie {
   evaluations!: EntityTable<EvaluationRow, 'id'>;
   readingEvents!: EntityTable<ReadingEventRow, 'id'>;
   settings!: EntityTable<SettingRow, 'id'>;
+  learningProgress!: EntityTable<LearningProgressRow, 'id'>;
+  flashcardReviews!: EntityTable<FlashcardReviewRow, 'id'>;
 
   constructor() {
     super('ArcanaDB');
@@ -87,6 +110,20 @@ class OraculoTarotDB extends Dexie {
       evaluations: '&id, readingId, revisionId, evaluation, createdAt',
       readingEvents: '&id, readingId, revisionId, type, createdAt',
       settings: '&id, updatedAt',
+    });
+    this.version(3).stores({
+      people: '&id, normalizedName, createdAt',
+      readings: '&id, personId, category, status, spreadId, createdAt',
+      readingRevisions: '&id, readingId, &[readingId+revisionNumber], createdAt',
+      readingCards: '&id, revisionId, cardId, positionId, parentPositionId, [revisionId+positionOrder]',
+      interpretations: '&id, revisionId, readingId, createdAt',
+      favorites: '&id, type, targetId',
+      cardNotes: '&id, cardId',
+      evaluations: '&id, readingId, revisionId, evaluation, createdAt',
+      readingEvents: '&id, readingId, revisionId, type, createdAt',
+      settings: '&id, updatedAt',
+      learningProgress: '&id, &cardId, state, nextReview, updatedAt',
+      flashcardReviews: '&id, cardId, source, reviewedAt',
     });
   }
 }

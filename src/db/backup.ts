@@ -29,9 +29,11 @@ export async function createBackupBlob(){
     evaluations:await db.evaluations.toArray(),
     readingEvents:await db.readingEvents.toArray(),
     settings:await db.settings.toArray(),
+    learningProgress:await db.learningProgress.toArray(),
+    flashcardReviews:await db.flashcardReviews.toArray(),
   };
   const payloadText=JSON.stringify(payload);
-  const envelope={format:'ORACULO_TAROT_BACKUP' as const,version:1 as const,createdAt:new Date().toISOString(),appVersion:'0.4.0',dbSchema:2,checksum:await sha256(payloadText),payload};
+  const envelope={format:'ORACULO_TAROT_BACKUP' as const,version:1 as const,createdAt:new Date().toISOString(),appVersion:'0.5.0',dbSchema:3,checksum:await sha256(payloadText),payload};
   return new Blob([JSON.stringify(envelope,null,2)],{type:'application/json'});
 }
 
@@ -48,10 +50,10 @@ export async function restoreBackupFile(file:File){
   const expected=await sha256(JSON.stringify(parsed.payload));
   if(expected!==parsed.checksum) throw new Error('BACKUP_CHECKSUM_INVALID');
   const p=parsed.payload as Record<string,unknown[]>;
-  await db.transaction('rw',db.people,db.readings,db.readingRevisions,db.readingCards,db.interpretations,db.favorites,db.cardNotes,db.evaluations,db.readingEvents,db.settings,async()=>{
+  await db.transaction('rw',db.people,db.readings,db.readingRevisions,db.readingCards,db.interpretations,db.favorites,db.cardNotes,db.evaluations,db.readingEvents,db.settings,db.learningProgress,db.flashcardReviews,async()=>{
     await Promise.all([
       db.people.clear(),db.readings.clear(),db.readingRevisions.clear(),db.readingCards.clear(),db.interpretations.clear(),
-      db.favorites.clear(),db.cardNotes.clear(),db.evaluations.clear(),db.readingEvents.clear(),db.settings.clear(),
+      db.favorites.clear(),db.cardNotes.clear(),db.evaluations.clear(),db.readingEvents.clear(),db.settings.clear(),db.learningProgress.clear(),db.flashcardReviews.clear(),
     ]);
     if(p.people?.length) await db.people.bulkAdd(p.people as never[]);
     if(p.readings?.length) await db.readings.bulkAdd(p.readings as never[]);
@@ -63,6 +65,8 @@ export async function restoreBackupFile(file:File){
     if(p.evaluations?.length) await db.evaluations.bulkAdd(p.evaluations as never[]);
     if(p.readingEvents?.length) await db.readingEvents.bulkAdd(p.readingEvents as never[]);
     if(p.settings?.length) await db.settings.bulkAdd(p.settings as never[]);
+    if(p.learningProgress?.length) await db.learningProgress.bulkAdd(p.learningProgress as never[]);
+    if(p.flashcardReviews?.length) await db.flashcardReviews.bulkAdd(p.flashcardReviews as never[]);
   });
   return parsed;
 }
