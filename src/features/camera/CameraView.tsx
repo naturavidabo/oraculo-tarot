@@ -72,14 +72,14 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
     setPreview(URL.createObjectURL(next));setFile(next);setName(next.name||'Foto de la carta');
     setRecognition(null);setFraming(null);setError('');setProgress('');setTestMessage('');setActionMessage('');
     setSelectedCandidateId('');setPrecisionMode(false);setCorners(defaultCorners);
-    void inspectTarotPhoto(next).then(setFraming).catch(()=>setFraming({status:'ADJUST',quality:0,method:'CENTER_GUIDE',message:'No se pudo evaluar el encuadre antes del reconocimiento.',observedRatio:0}));
+    void inspectTarotPhoto(next).then(setFraming).catch(()=>setFraming({status:'ADJUST',quality:0,method:'CENTER_GUIDE',message:'No se pudo evaluar el encuadre antes del reconocimiento.',observedRatio:0,multipleEvidence:0}));
   }
 
   async function analyze(){
     if(!file)return;
     setError('');setRecognition(null);setSelectedCandidateId('');setProgress(precisionMode?'Rectificando por cuatro esquinas…':'Preparando imagen y buscando bordes…');setTestMessage('');setActionMessage('');
     try{
-      const result=await recognizeTarotCard(file,(done,total)=>setProgress(`Comparación visual 3.0 ${done}/${total}…`),precisionMode?{corners}:{});
+      const result=await recognizeTarotCard(file,(done,total)=>setProgress(`Comparación visual 4.0 ${done}/${total}…`),precisionMode?{corners}:{});
       setRecognition(result);
       const first=result.candidates[0];if(first){setSelectedCandidateId(first.cardId);setSelectedOrientation(first.orientation)}
       if(testActualId){
@@ -90,8 +90,9 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
         if((actual?.rank??79)>5)setError('La carta real quedó fuera del Top 5. Activa “Ajuste preciso de 4 esquinas” y vuelve a analizar antes de corregir manualmente.');
       }
       if(!result.candidates.length)setError('No se pudieron generar candidatos. Comprueba el diagnóstico 78/78 de imágenes locales.');
-    }catch{
-      setError('No se pudo analizar la fotografía. Intenta que la carta ocupe la mayor parte del encuadre o usa el ajuste preciso de cuatro esquinas.');
+    }catch(error){
+      if(error instanceof Error&&error.message==='MULTIPLE_CARDS_SUSPECTED')setError('Se detectó más de una zona con forma de carta. El reconocimiento individual se bloqueó para evitar candidatos falsos. Fotografía una sola carta o encierra una con 4 esquinas.');
+      else setError('No se pudo analizar la fotografía. Intenta que la carta ocupe la mayor parte del encuadre o usa el ajuste preciso de cuatro esquinas.');
     }finally{setProgress('');}
   }
 
@@ -137,9 +138,9 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
 
   return <section className="page camera-page">
     <button type="button" className="text-button" onClick={back}>← Tarot</button>
-    <span className="eyebrow">CÁMARA · RECONOCIMIENTO VISUAL 3.5 · BETA 5</span>
+    <span className="eyebrow">CÁMARA · CLASIFICACIÓN ROBUSTA 4.0 · BETA 6</span>
     <h1>Reconocer cartas físicas</h1>
-    <p className="lead">Fotografía <b>una carta por vez</b>. Beta 5 revisa primero el encuadre, prueba varios recortes de la escena y elige <b>un único encuadre ganador</b> antes de comparar las 78 cartas. La orientación se calcula después, por separado.</p>
+    <p className="lead">Fotografía <b>una carta por vez</b>. Beta 6 refuerza la identidad con detalle fino, bordes, gradientes y color por zonas; además exige que la coincidencia sea estable entre pequeñas variaciones del mismo encuadre. Las escenas con probable presencia de varias cartas se bloquean.</p>
 
     <div className="camera-guide">
       <b>Para mejorar el reconocimiento</b>
@@ -171,7 +172,7 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
     {file&&framing&&<div className={`camera-preflight ${framing.status.toLowerCase()}`}>
       <b>{framing.status==='GOOD'?'✓ Encuadre apto':framing.status==='MULTIPLE_SUSPECTED'?'⚠ Parece haber más de una carta':'△ Ajusta el encuadre'}</b>
       <span>{framing.message}</span>
-      <small>Calidad previa {framing.quality}/100 · {framing.method==='AUTO_EDGES'?'bordes localizados':'guía central'}.</small>
+      <small>Calidad previa {framing.quality}/100 · {framing.method==='AUTO_EDGES'?'bordes localizados':'guía central'} · evidencia multicarta {framing.multipleEvidence}/100.</small>
     </div>}
 
     <button type="button" className="primary-cta" onClick={()=>inputRef.current?.click()}>📷 Tomar foto / elegir imagen</button>
@@ -194,8 +195,8 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
     {testMessage&&<div className="notice-card info">{testMessage}</div>}
 
     {recognition&&<div className={`camera-recognition-status ${recognition.confidence.toLowerCase()}`}>
-      <b>{confidenceLabel[recognition.confidence]}</b>
-      <span>{recognition.cropMethod==='MANUAL_CORNERS'?'Rectificación manual por cuatro esquinas':recognition.cropMethod==='AUTO_EDGES'?'Encuadre automático ganador':'Encuadre central ganador'} · calidad {recognition.cropQuality}/100 · separación 1.º/2.º {recognition.margin.toFixed(1)} puntos · {recognition.cropHypothesesTested} encuadres evaluados.</span>
+      <b>{confidenceLabel[recognition.confidence]} · confianza {recognition.confidenceScore}/99</b>
+      <span>{recognition.cropMethod==='MANUAL_CORNERS'?'Rectificación manual por cuatro esquinas':recognition.cropMethod==='AUTO_EDGES'?'Encuadre automático ganador':'Encuadre central ganador'} · calidad {recognition.cropQuality}/100 · separación 1.º/2.º {recognition.margin.toFixed(1)} puntos · estabilidad {recognition.recognitionStability}/100 · {recognition.cropHypothesesTested} encuadres evaluados.</span>
       {recognition.confidence==='INCONCLUSIVE'&&<small>No hay una coincidencia suficientemente clara. Puedes ajustar las cuatro esquinas, seleccionar uno de los candidatos o corregir manualmente.</small>}
       {recognition.framingWarning&&<small className="camera-framing-warning">{recognition.framingMessage}</small>}
     </div>}
@@ -236,7 +237,7 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
       return <div key={`${item.cardId}-${index}`}><TarotCardImage card={card} orientation={item.orientation} className="camera-confirmed-image"/><b>{index+1}. {item.cardName}</b><small>{item.orientation==='UPRIGHT'?'Derecha':'Invertida'}</small><button type="button" onClick={()=>remove(index)}>Quitar</button></div>;
     })}</div>}
 
-    <div className="notice-card info"><b>Beta 5</b><span>Autoencuadre 3.5: primero se valida la escena, luego se comparan varios encuadres completos y se elige uno solo para todo el mazo. Las fotos con probable presencia de varias cartas se detienen antes de generar candidatos engañosos.</span></div>
+    <div className="notice-card info"><b>Beta 6</b><span>Clasificación robusta 4.0: una sola carta, comparación por detalle fino y color local, ranking estable entre variaciones pequeñas y bloqueo duro cuando se sospechan varias cartas. El ajuste de 4 esquinas sigue siendo el modo de rescate.</span></div>
     {!!confirmed.length&&!countReady&&<div className="notice-card warning">Para pasar directamente a una tirada, confirma 1, 3, 5, 6, 7, 9, 10 o 12 cartas. Ahora tienes {confirmed.length}.</div>}
     <button type="button" className="primary-cta" disabled={!countReady} onClick={continueReading}>Usar {confirmed.length||''} carta{confirmed.length===1?'':'s'} en una lectura</button>
   </section>;

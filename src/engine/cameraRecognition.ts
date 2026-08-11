@@ -8,7 +8,7 @@ export type CameraPoint={x:number;y:number};
 export type CameraCorners=[CameraPoint,CameraPoint,CameraPoint,CameraPoint];
 export type CameraRecognitionOptions={corners?:CameraCorners};
 export type CameraFramingStatus='GOOD'|'ADJUST'|'MULTIPLE_SUSPECTED';
-export type CameraFramingInspection={status:CameraFramingStatus;quality:number;method:'AUTO_EDGES'|'CENTER_GUIDE';message:string;observedRatio:number};
+export type CameraFramingInspection={status:CameraFramingStatus;quality:number;method:'AUTO_EDGES'|'CENTER_GUIDE';message:string;observedRatio:number;multipleEvidence:number};
 export type CameraCandidate={
   cardId:string;
   cardName:string;
@@ -29,6 +29,8 @@ export type CameraRecognitionResult={
   framingStatus:CameraFramingStatus;
   framingMessage:string;
   cropHypothesesTested:number;
+  confidenceScore:number;
+  recognitionStability:number;
 };
 export type CameraFeedback={
   id:string;
@@ -55,6 +57,10 @@ const REGION_Y=6;
 const HOG_X=4;
 const HOG_Y=6;
 const HOG_BINS=8;
+const FINE_W=32;
+const FINE_H=54;
+const CHROMA_X=8;
+const CHROMA_Y=12;
 const FEEDBACK_KEY='oraculo_camera_feedback_v2';
 
 const referenceCache=new Map<string,Descriptor>();
@@ -66,6 +72,8 @@ type Descriptor={
   rgb:Float32Array;
   hist:Float32Array;
   hog:Float32Array;
+  fineGray:Float32Array;
+  chroma:Float32Array;
 };
 
 function clamp(n:number,min:number,max:number){return Math.max(min,Math.min(max,n));}
@@ -97,20 +105,60 @@ function insetCrop(rect:CropRect,factor:number):CropRect{
 
 function luminance(r:number,g:number,b:number){return r*.299+g*.587+b*.114}
 
-function estimateCardRect(img:HTMLImageElement):{rect:CropRect;method:'AUTO_EDGES'|'CENTER_GUIDE';quality:number;status:CameraFramingStatus;message:string;observedRatio:number}{
+
+function quickRegionCardLikelihood(gray:Float32Array,w:number,h:number,rx0:number,ry0:number,rx1:number,ry1:number){
+  const xStart=Math.max(1,Math.floor(w*rx0)),xEnd=Math.min(w-2,Math.floor(w*rx1));
+  const yStart=Math.max(1,Math.floor(h*ry0)),yEnd=Math.min(h-2,Math.floor(h*ry1));
+  const rw=Math.max(4,xEnd-xStart),rh=Math.max(4,yEnd-yStart);
+  const gx=new Float32Array(rw),gy=new Float32Array(rh);
+  for(let lx=1;lx<rw-1;lx++){
+    const x=xStart+lx;let sum=0;
+    for(let y=yStart;y<yEnd;y++)sum+=Math.abs(gray[y*w+x+1]-gray[y*w+x-1]);
+    gx[lx]=sum/Math.max(1,rh);
+  }
+  for(let ly=1;ly<rh-1;ly++){
+    const y=yStart+ly;let sum=0;
+    for(let x=xStart;x<xEnd;x++)sum+=Math.abs(gray[(y+1)*w+x]-gray[(y-1)*w+x]);
+    gy[ly]=sum/Math.max(1,rw);
+  }
+  const argMax=(arr:Float32Array,a:number,b:number)=>{let idx=a,best=-Infinity;for(let i=a;i<=b;i++)if(arr[i]>best){best=arr[i];idx=i}return {idx,best}};
+  const left=argMax(gx,Math.floor(rw*.02),Math.floor(rw*.46));
+  const right=argMax(gx,Math.floor(rw*.54),Math.floor(rw*.98));
+  const top=argMax(gy,Math.floor(rh*.02),Math.floor(rh*.46));
+  const bottom=argMax(gy,Math.floor(rh*.54),Math.floor(rh*.98));
+  const cw=right.idx-left.idx,ch=bottom.idx-top.idx;
+  const ratio=cw/Math.max(1,ch),area=(cw*ch)/(rw*rh);
+  const edge=(left.best+right.best+top.best+bottom.best)/4;
+  const ratioQuality=1-Math.min(1,Math.abs(ratio-TARGET_RATIO)/TARGET_RATIO);
+  const quality=clamp(Math.round((edge/28)*50+ratioQuality*34+Math.min(1,area/.52)*16),0,100);
+  return {plausible:cw>rw*.28&&ch>rh*.42&&ratio>.40&&ratio<.80&&area>.16&&quality>=42,quality,ratio};
+}
+
+function multipleCardEvidence(gray:Float32Array,w:number,h:number){
+  const left=quickRegionCardLikelihood(gray,w,h,0,.03,.62,.97);
+  const right=quickRegionCardLikelihood(gray,w,h,.38,.03,1,.97);
+  const top=quickRegionCardLikelihood(gray,w,h,.03,0,.97,.62);
+  const bottom=quickRegionCardLikelihood(gray,w,h,.03,.38,.97,1);
+  const horizontal=left.plausible&&right.plausible?Math.min(left.quality,right.quality):0;
+  const vertical=top.plausible&&bottom.plausible?Math.min(top.quality,bottom.quality):0;
+  return Math.max(horizontal,vertical);
+}
+
+function estimateCardRect(img:HTMLImageElement):{rect:CropRect;method:'AUTO_EDGES'|'CENTER_GUIDE';quality:number;status:CameraFramingStatus;message:string;observedRatio:number;multipleEvidence:number}{
   const maxW=300,maxH=420;
   const scale=Math.min(maxW/img.width,maxH/img.height,1);
   const w=Math.max(80,Math.round(img.width*scale));
   const h=Math.max(120,Math.round(img.height*scale));
   const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
-  if(!ctx)return {rect:centerCrop(img.width,img.height),method:'CENTER_GUIDE',quality:0,status:'ADJUST',message:'No se pudo evaluar el encuadre. Usa los cuatro bordes visibles.',observedRatio:0};
+  if(!ctx)return {rect:centerCrop(img.width,img.height),method:'CENTER_GUIDE',quality:0,status:'ADJUST',message:'No se pudo evaluar el encuadre. Usa los cuatro bordes visibles.',observedRatio:0,multipleEvidence:0};
   ctx.drawImage(img,0,0,w,h);
   const data=ctx.getImageData(0,0,w,h).data;
   const gray=new Float32Array(w*h);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
     const i=(y*w+x)*4;gray[y*w+x]=luminance(data[i],data[i+1],data[i+2]);
   }
+  const multipleEvidence=multipleCardEvidence(gray,w,h);
   const gx=new Float32Array(w),gy=new Float32Array(h);
   const y0=Math.floor(h*.08),y1=Math.floor(h*.92),x0=Math.floor(w*.08),x1=Math.floor(w*.92);
   for(let x=1;x<w-1;x++){let sum=0;for(let y=y0;y<y1;y++)sum+=Math.abs(gray[y*w+x+1]-gray[y*w+x-1]);gx[x]=sum/Math.max(1,y1-y0)}
@@ -126,20 +174,23 @@ function estimateCardRect(img:HTMLImageElement):{rect:CropRect;method:'AUTO_EDGE
   const ratioQuality=1-Math.min(1,Math.abs(ratio-TARGET_RATIO)/TARGET_RATIO);
   const quality=clamp(Math.round((edgeMean/30)*48 + ratioQuality*34 + Math.min(1,area/.55)*18),0,100);
   const plausible=cw>w*.24&&ch>h*.38&&ratio>.41&&ratio<.77&&area>.15&&quality>=38;
-  const multipleLike=!plausible&&quality>=55&&(ratio>.84||ratio<.34)&&area>.20;
+  const multipleLike=multipleEvidence>=48||(!plausible&&quality>=55&&(ratio>.84||ratio<.34)&&area>.20);
+  if(multipleLike){
+    return {rect:centerCrop(img.width,img.height),method:'CENTER_GUIDE',quality:Math.max(quality,multipleEvidence),status:'MULTIPLE_SUSPECTED',message:'Se detectan dos zonas con forma de carta o un encuadre incompatible con una sola carta. En este modo usa una sola carta o encierra una con 4 esquinas.',observedRatio:ratio,multipleEvidence};
+  }
   if(!plausible){
-    return {rect:centerCrop(img.width,img.height),method:'CENTER_GUIDE',quality,status:multipleLike?'MULTIPLE_SUSPECTED':'ADJUST',message:multipleLike?'El encuadre parece contener más de una carta o una figura demasiado ancha/alta. Fotografía una sola carta o encierra una con 4 esquinas.':'No se aislaron los cuatro bordes con suficiente claridad. Acerca y centra la carta o usa 4 esquinas.',observedRatio:ratio};
+    return {rect:centerCrop(img.width,img.height),method:'CENTER_GUIDE',quality,status:'ADJUST',message:'No se aislaron los cuatro bordes con suficiente claridad. Acerca y centra la carta o usa 4 esquinas.',observedRatio:ratio,multipleEvidence};
   }
   const inv=1/scale,padX=cw*.018,padY=ch*.018;
   const sx=clamp((left.idx-padX)*inv,0,img.width-1),sy=clamp((top.idx-padY)*inv,0,img.height-1);
   const sw=clamp((cw+padX*2)*inv,1,img.width-sx),sh=clamp((ch+padY*2)*inv,1,img.height-sy);
-  return {rect:{sx,sy,sw,sh},method:'AUTO_EDGES',quality,status:quality>=58?'GOOD':'ADJUST',message:quality>=58?'Encuadre apto: se localizaron bordes compatibles con una carta.':'Se detectó una carta, pero el encuadre puede mejorarse.',observedRatio:ratio};
+  return {rect:{sx,sy,sw,sh},method:'AUTO_EDGES',quality,status:quality>=58?'GOOD':'ADJUST',message:quality>=58?'Encuadre apto: se localizaron bordes compatibles con una carta.':'Se detectó una carta, pero el encuadre puede mejorarse.',observedRatio:ratio,multipleEvidence};
 }
 
 export async function inspectTarotPhoto(file:File):Promise<CameraFramingInspection>{
   const photo=await loadImage(file);
   const crop=estimateCardRect(photo);
-  return {status:crop.status,quality:crop.quality,method:crop.method,message:crop.message,observedRatio:Math.round(crop.observedRatio*100)/100};
+  return {status:crop.status,quality:crop.quality,method:crop.method,message:crop.message,observedRatio:Math.round(crop.observedRatio*100)/100,multipleEvidence:crop.multipleEvidence};
 }
 
 function renderNormalized(img:HTMLImageElement,rect:CropRect,rotationDeg=0,zoom=1,dx=0,dy=0){
@@ -267,8 +318,20 @@ function descriptorFromImageData(image:ImageData):Descriptor{
     for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const i=(y*width+x)*4;sr+=data[i];sg+=data[i+1];sb+=data[i+2];n++}
     rgb[ri++]=sr/Math.max(1,n)/255;rgb[ri++]=sg/Math.max(1,n)/255;rgb[ri++]=sb/Math.max(1,n)/255;
   }
+  const fineGray=zNormalize(downsample(grayFull,width,height,FINE_W,FINE_H));
+  const chroma=new Float32Array(CHROMA_X*CHROMA_Y*2);
+  let ci=0;
+  for(let cy=0;cy<CHROMA_Y;cy++)for(let cx=0;cx<CHROMA_X;cx++){
+    const x0=Math.floor(cx*width/CHROMA_X),x1=Math.floor((cx+1)*width/CHROMA_X);
+    const y0=Math.floor(cy*height/CHROMA_Y),y1=Math.floor((cy+1)*height/CHROMA_Y);
+    let rr=0,gg=0,bb=0,n=0;
+    for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const i=(y*width+x)*4;rr+=data[i];gg+=data[i+1];bb+=data[i+2];n++}
+    rr/=Math.max(1,n);gg/=Math.max(1,n);bb/=Math.max(1,n);
+    const sum=rr+gg+bb+1;
+    chroma[ci++]=rr/sum;chroma[ci++]=gg/sum;
+  }
   const pixels=width*height;for(let i=0;i<12;i++)hist[i]/=pixels;for(let i=12;i<18;i++)hist[i]/=pixels;for(let i=18;i<24;i++)hist[i]/=pixels;
-  return {gray,edges,rgb,hist,hog};
+  return {gray,edges,rgb,hist,hog,fineGray,chroma};
 }
 
 function cosine(a:Float32Array,b:Float32Array){
@@ -280,12 +343,14 @@ function l1Similarity(a:Float32Array,b:Float32Array,scale=1){
   return clamp(1-d/scale,0,1);
 }
 function descriptorSimilarity(a:Descriptor,b:Descriptor){
+  const fine=cosine(a.fineGray,b.fineGray);
   const structure=cosine(a.gray,b.gray);
   const edges=cosine(a.edges,b.edges);
   const hog=cosine(a.hog,b.hog);
+  const chroma=l1Similarity(a.chroma,b.chroma,.23);
   const color=l1Similarity(a.rgb,b.rgb,.60);
   const hist=l1Similarity(a.hist,b.hist,.075);
-  return edges*.27+structure*.25+hog*.22+color*.19+hist*.07;
+  return fine*.24+edges*.20+hog*.16+structure*.13+chroma*.17+color*.07+hist*.03;
 }
 
 async function referenceDescriptor(cardId:string){
@@ -373,14 +438,21 @@ function orientationConfidenceFor(best:number,other:number):CameraOrientationCon
 
 function confidenceFor(best:number,second:number):CameraConfidence{
   const margin=best-second;
-  if(best>=.82&&margin>=.032)return 'HIGH';
-  if(best>=.74&&margin>=.018)return 'MEDIUM';
-  if(best>=.64&&margin>=.009)return 'LOW';
+  if(best>=.70&&margin>=.024)return 'HIGH';
+  if(best>=.64&&margin>=.013)return 'MEDIUM';
+  if(best>=.58&&margin>=.006)return 'LOW';
   return 'INCONCLUSIVE';
 }
 
+function confidenceScoreFor(best:number,second:number,stability:number){
+  const margin=Math.max(0,best-second);
+  const absolute=clamp((best-.53)/.27,0,1);
+  const separation=clamp(margin/.055,0,1);
+  return Math.round(clamp(absolute*.48+separation*.40+stability*.12,0,1)*99);
+}
+
 type RawCandidate=Omit<CameraCandidate,'rank'>&{raw:number};
-type HypothesisEvaluation={hypothesis:CropHypothesis;sorted:RawCandidate[];best:number;second:number;evidence:number};
+type HypothesisEvaluation={hypothesis:CropHypothesis;sorted:RawCandidate[];best:number;second:number;evidence:number;stability:number};
 
 async function evaluateHypothesis(h:CropHypothesis,queries:QueryOrientations,onCard?:()=>void):Promise<HypothesisEvaluation>{
   const rows:RawCandidate[]=[];
@@ -389,9 +461,16 @@ async function evaluateHypothesis(h:CropHypothesis,queries:QueryOrientations,onC
   for(const card of tarotCards){
     try{
       const ref=await referenceDescriptor(card.id);
-      let uprightMatch=0,reversedMatch=0;
-      for(const q of queries.original)uprightMatch=Math.max(uprightMatch,descriptorSimilarity(q,ref));
-      for(const q of queries.rotated)reversedMatch=Math.max(reversedMatch,descriptorSimilarity(q,ref));
+      const robust=(scores:number[])=>{
+        if(!scores.length)return 0;
+        const ordered=[...scores].sort((a,b)=>b-a);
+        if(ordered.length===1)return ordered[0];
+        const top=ordered[0],second=ordered[1],third=ordered[2]??second;
+        return top*.55+second*.30+third*.15;
+      };
+      const uprightScores=queries.original.map(q=>descriptorSimilarity(q,ref));
+      const reversedScores=queries.rotated.map(q=>descriptorSimilarity(q,ref));
+      const uprightMatch=robust(uprightScores),reversedMatch=robust(reversedScores);
       const raw=Math.max(uprightMatch,reversedMatch);
       const orientation:Orientation=reversedMatch>uprightMatch?'REVERSED':'UPRIGHT';
       const orientationMargin=Math.round(Math.abs(uprightMatch-reversedMatch)*1000)/10;
@@ -403,14 +482,17 @@ async function evaluateHypothesis(h:CropHypothesis,queries:QueryOrientations,onC
   }
   const sorted=rows.sort((a,b)=>b.raw-a.raw),best=sorted[0]?.raw??0,second=sorted[1]?.raw??0;
   const margin=Math.max(0,best-second);
-  // Evidencia global: calidad absoluta + separación + pequeña preferencia por bordes reales.
-  const evidence=best + margin*1.45 + (h.method==='AUTO_EDGES'?Math.min(.018,h.quality/100*0.018):0);
-  return {hypothesis:h,sorted,best,second,evidence};
+  const top3=sorted.slice(0,3).map(x=>x.raw);
+  const stability=top3.length>=2?clamp((best-(top3[2]??second))*8,0,1):0;
+  // Evidencia global: coincidencia robusta + separación + estabilidad + preferencia por bordes reales.
+  const evidence=best + margin*1.55 + stability*.018 + (h.method==='AUTO_EDGES'?Math.min(.018,h.quality/100*0.018):0);
+  return {hypothesis:h,sorted,best,second,evidence,stability};
 }
 
 export async function recognizeTarotCard(file:File,onProgress?:(done:number,total:number)=>void,options:CameraRecognitionOptions={}):Promise<CameraRecognitionResult>{
   const photo=await loadImage(file);
   const crop=estimateCardRect(photo);
+  if(!options.corners&&crop.status==='MULTIPLE_SUSPECTED')throw new Error('MULTIPLE_CARDS_SUSPECTED');
   const hypotheses=buildCropHypotheses(photo,crop,options.corners);
   let done=0;const total=tarotCards.length*hypotheses.length;
   const evaluations:HypothesisEvaluation[]=[];
@@ -437,6 +519,8 @@ export async function recognizeTarotCard(file:File,onProgress?:(done:number,tota
     cropMethod:options.corners?'MANUAL_CORNERS':chosen?.hypothesis.method??crop.method,
     cropQuality:options.corners?100:Math.max(crop.quality,chosen?.hypothesis.quality??0),
     framingWarning,framingStatus,framingMessage,cropHypothesesTested:hypotheses.length,
+    confidenceScore:confidenceScoreFor(best,second,chosen?.stability??0),
+    recognitionStability:Math.round((chosen?.stability??0)*100),
   };
 }
 

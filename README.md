@@ -1,6 +1,6 @@
 # ORÁCULO TAROT
 
-**Versión 1.0.0 Beta 5 — Autoencuadre 3.5, ranking estable y rechazo temprano de escenas ambiguas**
+**Versión 1.0.0 Beta 4 — Orientación 3.0, ajuste táctil protegido y reconocimiento individual reforzado**
 
 PWA de Tarot Rider–Waite con tiradas físicas/virtuales, interpretación local en español, biblioteca, historial, aprendizaje y funcionamiento offline progresivo.
 
@@ -62,6 +62,5 @@ Durante el build se preparan 78 JPEG dentro de `public/cards`. GitHub Pages publ
 - Mantiene confianza alta/media/baja/no concluyente y modo de prueba con métricas locales.
 - Las fotografías no se almacenan.
 
-
-## 1.0.0 Beta 5 — autoencuadre 3.5
-La cámara inspecciona la escena antes de reconocer, prueba varios encuadres completos y selecciona uno solo para comparar las 78 cartas. Si la geometría parece corresponder a varias cartas, detiene el reconocimiento individual hasta que el usuario tome otra foto o delimite una sola carta con cuatro esquinas.
+## 1.0.0 Beta 6 — clasificación robusta 4.0
+La Beta 6 no inicia todavía el reconocimiento múltiple. Refuerza primero la identificación de una sola carta con detalle fino, cromaticidad local, ranking estable y bloqueo duro cuando la escena parece contener varias cartas. La confianza de identificación se muestra separada de la similitud visual bruta.
