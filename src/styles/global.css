@@ -66,3 +66,21 @@ body{background:radial-gradient(circle at 18% -8%,rgba(80,45,122,.38) 0,transpar
 .camera-precision-toggle{margin:0 0 10px}.camera-precision-toggle .selected{border-color:var(--gold2);background:#18263a}.camera-precision-panel{border:1px solid rgba(239,217,148,.28);border-radius:18px;padding:12px;background:rgba(8,18,31,.88);margin:15px 0}.camera-corner-editor{position:relative;width:100%;line-height:0;border-radius:14px;overflow:hidden;border:1px solid var(--line);touch-action:none;background:#050b13}.camera-corner-editor>img{display:block;width:100%;height:auto;max-height:none;user-select:none;-webkit-user-drag:none}.camera-corner-lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.camera-corner-lines polygon{fill:rgba(239,217,148,.08);stroke:#efd994;stroke-width:.7;vector-effect:non-scaling-stroke}.camera-corner-handle{position:absolute;width:42px;height:42px;min-width:42px;min-height:42px;transform:translate(-50%,-50%);border-radius:999px;border:2px solid #07111f;background:var(--gold2);color:#07111f;font-weight:900;display:grid;place-items:center;z-index:8;box-shadow:0 4px 18px rgba(0,0,0,.45);touch-action:none;cursor:grab}.camera-corner-handle:active{cursor:grabbing;transform:translate(-50%,-50%) scale(1.08)}
 .camera-recognition-status.manual_corners{border-color:var(--gold2)}
 @media(max-width:560px){.camera-candidate-grid button{min-height:190px;padding:9px}.camera-candidate-image{width:min(100%,138px)}.camera-corner-handle{width:46px;height:46px;min-width:46px;min-height:46px}.camera-confirm-button{position:relative;z-index:5}}
+
+
+/* ORÁCULO TAROT 1.0 Beta 4 — orientación 3.0 + editor táctil seguro */
+.camera-corner-editor,
+.camera-corner-editor *{
+  -webkit-user-select:none!important;
+  user-select:none!important;
+  -webkit-touch-callout:none!important;
+}
+.camera-corner-editor{overscroll-behavior:contain;touch-action:none}
+.camera-corner-editor>img{pointer-events:none!important}
+.camera-corner-handle{pointer-events:auto!important;touch-action:none!important}
+.camera-framing-warning{display:block;margin-top:8px;color:#efd994;font-weight:700;line-height:1.45}
+.camera-orientation-note{display:block;margin:8px 0 10px;color:var(--muted);line-height:1.4}
+.camera-orientation-note.high{color:#b9e8c8}
+.camera-orientation-note.medium{color:#efd994}
+.camera-orientation-note.low,.camera-orientation-note.ambiguous{color:#e9b8a7}
+.camera-orientation-stats{margin:10px 0 14px}

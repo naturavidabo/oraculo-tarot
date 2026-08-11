@@ -3,6 +3,7 @@ import { cardImagePath } from '../data/cardImages';
 import type { Orientation } from '../types/tarot';
 
 export type CameraConfidence='HIGH'|'MEDIUM'|'LOW'|'INCONCLUSIVE';
+export type CameraOrientationConfidence='HIGH'|'MEDIUM'|'LOW'|'AMBIGUOUS';
 export type CameraPoint={x:number;y:number};
 export type CameraCorners=[CameraPoint,CameraPoint,CameraPoint,CameraPoint];
 export type CameraRecognitionOptions={corners?:CameraCorners};
@@ -10,6 +11,8 @@ export type CameraCandidate={
   cardId:string;
   cardName:string;
   orientation:Orientation;
+  orientationConfidence:CameraOrientationConfidence;
+  orientationMargin:number;
   score:number;
   rank:number;
 };
@@ -20,6 +23,7 @@ export type CameraRecognitionResult={
   margin:number;
   cropMethod:'AUTO_EDGES'|'CENTER_GUIDE'|'MANUAL_CORNERS';
   cropQuality:number;
+  framingWarning:boolean;
 };
 export type CameraFeedback={
   id:string;
@@ -29,6 +33,9 @@ export type CameraFeedback={
   actualRank:number;
   topScore:number;
   confidence:CameraConfidence;
+  predictedOrientation?:Orientation;
+  actualOrientation?:Orientation;
+  orientationCorrect?:boolean;
 };
 
 const TARGET_RATIO=.58;
@@ -45,7 +52,7 @@ const HOG_Y=6;
 const HOG_BINS=8;
 const FEEDBACK_KEY='oraculo_camera_feedback_v2';
 
-const referenceCache=new Map<string,{upright:Descriptor;reversed:Descriptor}>();
+const referenceCache=new Map<string,Descriptor>();
 
 type CropRect={sx:number;sy:number;sw:number;sh:number};
 type Descriptor={
@@ -264,21 +271,6 @@ function descriptorFromImageData(image:ImageData):Descriptor{
   return {gray,edges,rgb,hist,hog};
 }
 
-function reverseDescriptor(d:Descriptor):Descriptor{
-  const reverseGrid=(src:Float32Array,channels=1)=>{
-    const cells=src.length/channels,out=new Float32Array(src.length);
-    for(let c=0;c<cells;c++)for(let k=0;k<channels;k++)out[(cells-1-c)*channels+k]=src[c*channels+k];
-    return out;
-  };
-  const reverseHog=new Float32Array(d.hog.length);
-  const cells=HOG_X*HOG_Y;
-  for(let c=0;c<cells;c++){
-    const rc=cells-1-c;
-    for(let b=0;b<HOG_BINS;b++)reverseHog[rc*HOG_BINS+((b+HOG_BINS/2)%HOG_BINS)]=d.hog[c*HOG_BINS+b];
-  }
-  return {gray:reverseGrid(d.gray),edges:reverseGrid(d.edges),rgb:reverseGrid(d.rgb,3),hist:d.hist,hog:reverseHog};
-}
-
 function cosine(a:Float32Array,b:Float32Array){
   let dot=0,aa=0,bb=0;for(let i=0;i<a.length;i++){dot+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i]}
   if(!aa||!bb)return 0;return clamp((dot/Math.sqrt(aa*bb)+1)/2,0,1);
@@ -296,16 +288,37 @@ function descriptorSimilarity(a:Descriptor,b:Descriptor){
   return edges*.27+structure*.25+hog*.22+color*.19+hist*.07;
 }
 
-async function referenceDescriptors(cardId:string){
+async function referenceDescriptor(cardId:string){
   const cached=referenceCache.get(cardId);if(cached)return cached;
   const img=await loadImage(cardImagePath(cardId));
   const rect=centerCrop(img.width,img.height);
   const upright=descriptorFromImageData(renderNormalized(img,rect));
-  const value={upright,reversed:reverseDescriptor(upright)};
-  referenceCache.set(cardId,value);return value;
+  referenceCache.set(cardId,upright);return upright;
 }
 
-function rectQueryDescriptors(img:HTMLImageElement,rect:CropRect){
+function rotateImageData180(image:ImageData){
+  const out=new Uint8ClampedArray(image.data.length);
+  const pixels=image.width*image.height;
+  for(let p=0;p<pixels;p++){
+    const src=(pixels-1-p)*4,dst=p*4;
+    out[dst]=image.data[src];out[dst+1]=image.data[src+1];out[dst+2]=image.data[src+2];out[dst+3]=image.data[src+3];
+  }
+  return new ImageData(out,image.width,image.height);
+}
+
+type QueryOrientations={original:Descriptor[];rotated:Descriptor[]};
+
+function descriptorOrientations(images:ImageData[]):QueryOrientations{
+  const original:Descriptor[]=[];
+  const rotated:Descriptor[]=[];
+  for(const image of images){
+    original.push(descriptorFromImageData(image));
+    rotated.push(descriptorFromImageData(rotateImageData180(image)));
+  }
+  return {original,rotated};
+}
+
+function rectQueryImages(img:HTMLImageElement,rect:CropRect){
   const variants=[
     {r:0,z:1,dx:0,dy:0},
     {r:-3,z:1.02,dx:0,dy:0},{r:3,z:1.02,dx:0,dy:0},
@@ -313,16 +326,24 @@ function rectQueryDescriptors(img:HTMLImageElement,rect:CropRect){
     {r:0,z:1.04,dx:-.02,dy:0},{r:0,z:1.04,dx:.02,dy:0},
     {r:0,z:1.04,dx:0,dy:-.018},{r:0,z:1.04,dx:0,dy:.018},
   ];
-  return variants.map(v=>descriptorFromImageData(renderNormalized(img,rect,v.r,v.z,v.dx,v.dy)));
+  return variants.map(v=>renderNormalized(img,rect,v.r,v.z,v.dx,v.dy));
 }
 
-function queryDescriptors(img:HTMLImageElement,cropRect:CropRect,manualCorners?:CameraCorners){
-  if(manualCorners)return [descriptorFromImageData(renderManualCorners(img,manualCorners))];
+function queryDescriptors(img:HTMLImageElement,cropRect:CropRect,manualCorners?:CameraCorners):QueryOrientations{
+  if(manualCorners)return descriptorOrientations([renderManualCorners(img,manualCorners)]);
   const center=centerCrop(img.width,img.height);
   const rects=[cropRect,center,insetCrop(center,.025)];
   const unique:CropRect[]=[];
   for(const r of rects){if(!unique.some(u=>Math.abs(u.sx-r.sx)<2&&Math.abs(u.sy-r.sy)<2&&Math.abs(u.sw-r.sw)<2&&Math.abs(u.sh-r.sh)<2))unique.push(r)}
-  return unique.flatMap(r=>rectQueryDescriptors(img,r));
+  return descriptorOrientations(unique.flatMap(r=>rectQueryImages(img,r)));
+}
+
+function orientationConfidenceFor(best:number,other:number):CameraOrientationConfidence{
+  const gap=Math.abs(best-other);
+  if(best>=.72&&gap>=.055)return 'HIGH';
+  if(best>=.68&&gap>=.034)return 'MEDIUM';
+  if(gap>=.018)return 'LOW';
+  return 'AMBIGUOUS';
 }
 
 function confidenceFor(best:number,second:number):CameraConfidence{
@@ -344,38 +365,51 @@ export async function recognizeTarotCard(file:File,onProgress?:(done:number,tota
     while(queue.length){
       const card=queue.shift();if(!card)break;
       try{
-        const ref=await referenceDescriptors(card.id);
-        let bestNormal=0,bestReversed=0;
-        for(const q of queries){
-          bestNormal=Math.max(bestNormal,descriptorSimilarity(q,ref.upright));
-          bestReversed=Math.max(bestReversed,descriptorSimilarity(q,ref.reversed));
-        }
-        const raw=Math.max(bestNormal,bestReversed);
+        const ref=await referenceDescriptor(card.id);
+        // Identidad y orientación se calculan por separado:
+        // la foto original y una copia físicamente rotada 180° se comparan
+        // únicamente contra la referencia derecha de cada carta.
+        let uprightMatch=0,reversedMatch=0;
+        for(const q of queries.original)uprightMatch=Math.max(uprightMatch,descriptorSimilarity(q,ref));
+        for(const q of queries.rotated)reversedMatch=Math.max(reversedMatch,descriptorSimilarity(q,ref));
+        const raw=Math.max(uprightMatch,reversedMatch);
+        const orientation:Orientation=reversedMatch>uprightMatch?'REVERSED':'UPRIGHT';
+        const orientationMargin=Math.round(Math.abs(uprightMatch-reversedMatch)*1000)/10;
+        const orientationConfidence=orientationConfidenceFor(Math.max(uprightMatch,reversedMatch),Math.min(uprightMatch,reversedMatch));
         const score=Math.round(clamp((raw-.44)/.48*100,0,99));
-        results.push({cardId:card.id,cardName:card.name,orientation:bestReversed>bestNormal?'REVERSED':'UPRIGHT',score,raw});
+        results.push({cardId:card.id,cardName:card.name,orientation,orientationConfidence,orientationMargin,score,raw});
       }catch{/* referencia ausente: la validación 78/78 la detecta por separado */}
       done++;onProgress?.(done,tarotCards.length);
     }
   };
   await Promise.all(Array.from({length:4},()=>worker()));
   const sorted=results.sort((a,b)=>b.raw-a.raw);
-  const all:CameraCandidate[]=sorted.map((x,index)=>({cardId:x.cardId,cardName:x.cardName,orientation:x.orientation,score:x.score,rank:index+1}));
+  const all:CameraCandidate[]=sorted.map((x,index)=>({
+    cardId:x.cardId,cardName:x.cardName,orientation:x.orientation,
+    orientationConfidence:x.orientationConfidence,orientationMargin:x.orientationMargin,
+    score:x.score,rank:index+1
+  }));
   const best=sorted[0]?.raw??0,second=sorted[1]?.raw??0;
+  const confidence=confidenceFor(best,second);
+  const framingWarning=!options.corners&&crop.method==='CENTER_GUIDE'&&crop.quality<38&&confidence==='INCONCLUSIVE';
   return {
     candidates:all.slice(0,12),
     all,
-    confidence:confidenceFor(best,second),
+    confidence,
     margin:Math.round(Math.max(0,best-second)*1000)/10,
     cropMethod:options.corners?'MANUAL_CORNERS':crop.method,
     cropQuality:options.corners?100:crop.quality,
+    framingWarning,
   };
 }
 
-export function recordCameraFeedback(result:CameraRecognitionResult,actualCardId:string){
+export function recordCameraFeedback(result:CameraRecognitionResult,actualCardId:string,actualOrientation?:Orientation){
   const actual=result.all.find(x=>x.cardId===actualCardId);
   const row:CameraFeedback={
     id:crypto.randomUUID(),createdAt:new Date().toISOString(),actualCardId,
     predictedCardId:result.all[0]?.cardId,actualRank:actual?.rank??79,topScore:result.all[0]?.score??0,confidence:result.confidence,
+    predictedOrientation:actual?.orientation,actualOrientation,
+    orientationCorrect:actualOrientation&&actual?actual.orientation===actualOrientation:undefined,
   };
   try{
     let rows:CameraFeedback[]=[];
@@ -392,7 +426,9 @@ export function cameraFeedbackSummary(){
   const top1=rows.filter(x=>x.actualRank===1).length;
   const top5=rows.filter(x=>x.actualRank<=5).length;
   const avgRank=rows.length?rows.reduce((s,x)=>s+x.actualRank,0)/rows.length:0;
-  return {samples:rows.length,top1,top5,avgRank:Math.round(avgRank*10)/10,rows};
+  const orientationRows=rows.filter(x=>typeof x.orientationCorrect==='boolean');
+  const orientationCorrect=orientationRows.filter(x=>x.orientationCorrect).length;
+  return {samples:rows.length,top1,top5,avgRank:Math.round(avgRank*10)/10,orientationSamples:orientationRows.length,orientationCorrect,rows};
 }
 
 export function confirmedCameraCard(cardId:string,orientation:Orientation){

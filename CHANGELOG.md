@@ -1,5 +1,15 @@
 # ORÁCULO TAROT — CHANGELOG
 
+## 1.0.0-beta.4
+- Reconstruye orientación como etapa separada de la identificación de carta.
+- La foto original y una copia rotada físicamente 180° se comparan contra una única referencia derecha.
+- El ranking de identidad deja de depender de una referencia invertida artificial.
+- Añade confianza y margen específicos de orientación: alta, media, baja o dudosa.
+- Modo de prueba registra también la orientación real y el diagnóstico calcula acierto derecha/invertida.
+- Protege el editor de cuatro esquinas contra selección/copiar, menú contextual y arrastre accidental de la imagen.
+- Añade advertencia de encuadre ambiguo cuando no parece existir una sola carta claramente aislada.
+- Mantiene reconocimiento individual, ajuste de cuatro esquinas, confirmación táctil, 78/78 imágenes y Tarot estable.
+
 ## 1.0.0-beta.3
 - Corrige el fallo táctil que impedía confirmar candidatos o selección manual en algunos dispositivos.
 - Selección de candidato y confirmación quedan separadas; el candidato elegido se resalta visualmente.

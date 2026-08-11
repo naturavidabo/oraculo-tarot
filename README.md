@@ -1,6 +1,6 @@
 # ORÁCULO TAROT
 
-**Versión 1.0.0 Beta 3 — Reconocimiento visual 2.5, controles táctiles reparados y ajuste de cuatro esquinas**
+**Versión 1.0.0 Beta 4 — Orientación 3.0, ajuste táctil protegido y reconocimiento individual reforzado**
 
 PWA de Tarot Rider–Waite con tiradas físicas/virtuales, interpretación local en español, biblioteca, historial, aprendizaje y funcionamiento offline progresivo.
 
@@ -43,6 +43,15 @@ Durante el build se preparan 78 JPEG dentro de `public/cards`. GitHub Pages publ
 - Catálogo oficial ampliado: Sí/No contextual, Dos caminos, Trabajo, Dinero, Relación completa, Cruz Celta y Rueda anual.
 - El reconocimiento múltiple de varias cartas en una sola fotografía queda para una fase posterior.
 
+
+## 1.0.0 Beta 4 — orientación 3.0 y editor táctil protegido
+- Separa identificación de carta y orientación: el ranking ya no depende de una referencia invertida artificial.
+- Compara la fotografía original y una copia físicamente rotada 180° contra una única referencia derecha por carta.
+- Añade confianza y margen específicos para derecha/invertida; si la diferencia es pequeña, la orientación se presenta como dudosa.
+- Modo de prueba permite registrar también la orientación real y el diagnóstico muestra porcentaje de aciertos de orientación.
+- El ajuste de cuatro esquinas bloquea selección de texto, copiar, menú contextual y arrastre de imagen en móvil.
+- Añade advertencia cuando el encuadre no parece aislar una sola carta con suficiente claridad.
+- Mantiene selección/confirmación separadas, búsqueda manual y todo el bloque Tarot estable.
 
 ## 1.0.0 Beta 3 — reconocimiento visual 2.5 y controles táctiles
 - Corrige el bloqueo táctil de candidatos y confirmación manual: seleccionar y confirmar son acciones separadas.

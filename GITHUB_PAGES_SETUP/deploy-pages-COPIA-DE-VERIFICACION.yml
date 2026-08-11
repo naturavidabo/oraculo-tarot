@@ -41,7 +41,7 @@ jobs:
       - name: Validate Spanish presentation layer
         run: npm run validate:spanish-ui
 
-      - name: Validate Beta 3 functional block
+      - name: Validate Beta 4 functional block
         run: npm run validate:beta
 
       - name: Prepare 78 local Rider-Waite images

@@ -37,7 +37,7 @@ export function MoreView(){
   }
 
   return <section className="page">
-    <span className="eyebrow">MÁS · ORÁCULO TAROT 1.0 BETA 3</span><h1>Herramientas</h1>
+    <span className="eyebrow">MÁS · ORÁCULO TAROT 1.0 BETA 4</span><h1>Herramientas</h1>
     <div className="feature-card static"><b>Respaldo local</b><span>Exporta lecturas, personas, notas, favoritos, evaluaciones y progreso de aprendizaje.</span></div>
     <div className="backup-actions">
       <button className="primary-cta" disabled={busy} onClick={()=>void backup()}>{busy?'Procesando…':'Crear respaldo'}</button>
@@ -59,14 +59,15 @@ export function MoreView(){
     <button className="secondary-cta" onClick={()=>setDiagnostic(runEngineSelfTest())}>Ejecutar diagnóstico del motor</button>
     {diagnostic&&<div className={`diagnostic-panel ${diagnostic.ok?'ok':'fail'}`}><b>{diagnostic.ok?'✓ Motor interpretativo operativo':'✗ Motor interpretativo con falla'}</b>{diagnostic.checks.map(item=><div key={item.label}><span>{item.ok?'✓':'✗'} {item.label}</span><small>{item.detail}</small></div>)}</div>}
 
-    <div className="section-title"><h2>Diagnóstico de cámara</h2><span>Beta 3</span></div>
+    <div className="section-title"><h2>Diagnóstico de cámara</h2><span>Beta 4</span></div>
     <p className="muted">Cada vez que corriges o pruebas una carta, se guarda únicamente el puesto que obtuvo la carta real. Las fotografías no se guardan.</p>
     <div className="status-card camera-stats"><div><strong>{cameraStats.samples}</strong><span>pruebas registradas</span></div><div><strong>{cameraStats.samples?Math.round(cameraStats.top1/cameraStats.samples*100):0}%</strong><span>acierto Top 1</span></div><div><strong>{cameraStats.samples?Math.round(cameraStats.top5/cameraStats.samples*100):0}%</strong><span>carta real en Top 5</span></div></div>
     {!!cameraStats.samples&&<div className="notice-card info">Puesto promedio de la carta real: <b>{cameraStats.avgRank}/78</b>. Esta métrica sirve para comprobar si las siguientes versiones realmente mejoran.</div>}
+    {!!cameraStats.orientationSamples&&<div className="status-card camera-orientation-stats"><div><strong>{cameraStats.orientationSamples}</strong><span>pruebas con orientación</span></div><div><strong>{Math.round(cameraStats.orientationCorrect/cameraStats.orientationSamples*100)}%</strong><span>orientación correcta</span></div><div><strong>{cameraStats.orientationCorrect}</strong><span>aciertos derecha/invertida</span></div></div>}
     <button className="secondary-cta" onClick={()=>setCameraStatsVersion(x=>x+1)}>Actualizar estadísticas de cámara</button>
 
-    <div className="section-title"><h2>Funciones Beta 3</h2><span>reconocimiento 2.5</span></div>
-    <div className="feature-card static"><b>📷 Reconocimiento 2.5</b><span>Compara estructura, bordes, color y gradientes; si hace falta permite rectificar la foto marcando manualmente las cuatro esquinas de la carta.</span></div>
+    <div className="section-title"><h2>Funciones Beta 4</h2><span>orientación 3.0</span></div>
+    <div className="feature-card static"><b>📷 Reconocimiento + orientación 3.0</b><span>Primero identifica la carta sin mezclar el ranking con la orientación; después compara la foto original y una rotación física de 180° para decidir derecha/invertida.</span></div>
     <div className="feature-card static"><b>✦ Aclaratorias</b><span>Añade hasta dos cartas aclaratorias por posición sin borrar la lectura original.</span></div>
     <div className="feature-card static"><b>Catálogo ampliado</b><span>Incluye decisión, trabajo, dinero, relación completa, Cruz Celta y rueda anual.</span></div>
 

@@ -1,7 +1,7 @@
-ORÁCULO TAROT 1.0 BETA 3
+ORÁCULO TAROT 1.0 BETA 4
 
 Esta carpeta contiene una copia visible del workflow de GitHub Pages.
 El archivo operativo debe estar en:
 .github/workflows/deploy-pages.yml
 
-La Beta conserva la preparación y validación obligatoria de las 78 imágenes locales y añade la validación del nuevo bloque funcional (cámara asistida, aclaratorias, narrativa 0.6 y catálogo ampliado).
+La Beta conserva la preparación/validación obligatoria de las 78 imágenes locales y añade validación del bloque Beta 4: orientación 3.0, protección táctil del editor de cuatro esquinas y diagnóstico de orientación independiente.

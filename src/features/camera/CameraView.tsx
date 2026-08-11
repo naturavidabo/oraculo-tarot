@@ -4,12 +4,14 @@ import { TarotCardImage } from '../../components/TarotCardImage';
 import {
   confirmedCameraCard, recognizeTarotCard, recordCameraFeedback,
   type CameraCandidate, type CameraRecognitionResult, type CameraConfidence, type CameraCorners,
+  type CameraOrientationConfidence,
 } from '../../engine/cameraRecognition';
 import type { Orientation } from '../../types/tarot';
 
 type Confirmed={cardId:string;cardName:string;orientation:Orientation};
 const SESSION_KEY='oraculo_camera_cards_v1';
 const confidenceLabel:Record<CameraConfidence,string>={HIGH:'Coincidencia alta',MEDIUM:'Coincidencia media',LOW:'Coincidencia baja',INCONCLUSIVE:'Reconocimiento no concluyente'};
+const orientationConfidenceLabel:Record<CameraOrientationConfidence,string>={HIGH:'orientación alta',MEDIUM:'orientación media',LOW:'orientación baja',AMBIGUOUS:'orientación dudosa'};
 const defaultCorners:CameraCorners=[{x:.18,y:.12},{x:.82,y:.12},{x:.82,y:.88},{x:.18,y:.88}];
 
 export function CameraView({back,startManual}:{back:()=>void;startManual:()=>void}){
@@ -27,6 +29,7 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
   const [manualOrientation,setManualOrientation]=useState<Orientation>('UPRIGHT');
   const [manualSearch,setManualSearch]=useState('');
   const [testActualId,setTestActualId]=useState('');
+  const [testActualOrientation,setTestActualOrientation]=useState<Orientation>('UPRIGHT');
   const [testMessage,setTestMessage]=useState('');
   const [selectedCandidateId,setSelectedCandidateId]=useState('');
   const [selectedOrientation,setSelectedOrientation]=useState<Orientation>('UPRIGHT');
@@ -74,14 +77,14 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
     if(!file)return;
     setError('');setRecognition(null);setSelectedCandidateId('');setProgress(precisionMode?'Rectificando por cuatro esquinas…':'Preparando imagen y buscando bordes…');setTestMessage('');setActionMessage('');
     try{
-      const result=await recognizeTarotCard(file,(done,total)=>setProgress(`Comparación visual 2.5 ${done}/${total}…`),precisionMode?{corners}:{});
+      const result=await recognizeTarotCard(file,(done,total)=>setProgress(`Comparación visual 3.0 ${done}/${total}…`),precisionMode?{corners}:{});
       setRecognition(result);
       const first=result.candidates[0];if(first){setSelectedCandidateId(first.cardId);setSelectedOrientation(first.orientation)}
       if(testActualId){
         const actual=result.all.find(x=>x.cardId===testActualId);
-        recordCameraFeedback(result,testActualId);
+        recordCameraFeedback(result,testActualId,testActualOrientation);
         const real=tarotCardById.get(testActualId)?.name??'Carta real';
-        setTestMessage(actual?`${real} quedó en el puesto ${actual.rank} de 78 · similitud ${actual.score}%. Prueba registrada localmente.`:`${real} no pudo evaluarse. Prueba registrada como no identificada.`);
+        setTestMessage(actual?`${real} quedó en el puesto ${actual.rank} de 78 · similitud ${actual.score}% · orientación detectada ${actual.orientation==='UPRIGHT'?'derecha':'invertida'} (${orientationConfidenceLabel[actual.orientationConfidence]}). Prueba registrada localmente.`:`${real} no pudo evaluarse. Prueba registrada como no identificada.`);
         if((actual?.rank??79)>5)setError('La carta real quedó fuera del Top 5. Activa “Ajuste preciso de 4 esquinas” y vuelve a analizar antes de corregir manualmente.');
       }
       if(!result.candidates.length)setError('No se pudieron generar candidatos. Comprueba el diagnóstico 78/78 de imágenes locales.');
@@ -109,7 +112,7 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
       setError('');
       registerFeedback(cardId);
       setRecognition(null);setFile(null);if(preview)URL.revokeObjectURL(preview);setPreview('');setName('');
-      setManualId('');setManualSearch('');setManualOrientation('UPRIGHT');setTestActualId('');setSelectedCandidateId('');setPrecisionMode(false);setCorners(defaultCorners);
+      setManualId('');setManualSearch('');setManualOrientation('UPRIGHT');setTestActualId('');setTestActualOrientation('UPRIGHT');setSelectedCandidateId('');setPrecisionMode(false);setCorners(defaultCorners);
     }catch{
       setError('No se pudo confirmar la carta. Vuelve a tocar “Confirmar” o selecciónala manualmente.');
     }
@@ -132,9 +135,9 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
 
   return <section className="page camera-page">
     <button type="button" className="text-button" onClick={back}>← Tarot</button>
-    <span className="eyebrow">CÁMARA · RECONOCIMIENTO VISUAL 2.5 · BETA 3</span>
+    <span className="eyebrow">CÁMARA · RECONOCIMIENTO VISUAL 3.0 · BETA 4</span>
     <h1>Reconocer cartas físicas</h1>
-    <p className="lead">Fotografía <b>una carta por vez</b>. ORÁCULO TAROT compara estructura, bordes, color y orientación contra las 78 Rider–Waite. Ahora puedes <b>seleccionar primero</b> un candidato y confirmarlo con un botón táctil separado.</p>
+    <p className="lead">Fotografía <b>una carta por vez</b>. ORÁCULO TAROT identifica primero qué carta es <b>sin mezclar ese ranking con la orientación</b>; después decide si está derecha o invertida comparando la foto original con una copia rotada físicamente 180°.</p>
 
     <div className="camera-guide">
       <b>Para mejorar el reconocimiento</b>
@@ -151,13 +154,13 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
     {preview&&precisionMode&&<div className="camera-precision-panel">
       <div className="section-title compact"><h2>Ajuste preciso de 4 esquinas</h2><span>táctil</span></div>
       <p className="muted">Arrastra cada punto dorado hasta una esquina real de la carta: superior izquierda, superior derecha, inferior derecha e inferior izquierda. Después vuelve a reconocer.</p>
-      <div ref={editorRef} className="camera-corner-editor">
-        <img src={preview} alt="Ajuste de las cuatro esquinas" draggable={false}/>
+      <div ref={editorRef} className="camera-corner-editor" onContextMenu={event=>event.preventDefault()} onDragStart={event=>event.preventDefault()}>
+        <img src={preview} alt="Ajuste de las cuatro esquinas" draggable={false} onContextMenu={event=>event.preventDefault()}/>
         <svg className="camera-corner-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points={polygon}/></svg>
         {corners.map((point,index)=><button
           type="button" key={index} className="camera-corner-handle" aria-label={`Esquina ${index+1}`}
           style={{left:`${point.x*100}%`,top:`${point.y*100}%`}}
-          onPointerDown={event=>{event.preventDefault();setDragging(index)}}>{index+1}</button>)}
+          onPointerDown={event=>{event.preventDefault();event.stopPropagation();event.currentTarget.setPointerCapture?.(event.pointerId);setDragging(index)}} onContextMenu={event=>event.preventDefault()}>{index+1}</button>)}
       </div>
       <button type="button" className="secondary-cta" onClick={resetCorners}>Restablecer esquinas</button>
     </div>}
@@ -172,8 +175,9 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
 
     {file&&<details className="explanation-details camera-calibration">
       <summary>Modo de prueba: sé cuál es la carta y quiero medir el reconocimiento</summary>
-      <p className="muted">Opcional. Selecciona la carta real antes de analizar. La app te dirá en qué puesto quedó y guardará solo esa estadística; no almacena la foto.</p>
+      <p className="muted">Opcional. Selecciona la carta real y su orientación antes de analizar. La app medirá por separado <b>identidad</b> y <b>orientación</b>; no almacena la foto.</p>
       <select value={testActualId} onChange={e=>setTestActualId(e.target.value)}><option value="">No usar modo de prueba</option>{tarotCards.map(card=><option value={card.id} key={card.id}>{card.name}</option>)}</select>
+      {testActualId&&<select value={testActualOrientation} onChange={e=>setTestActualOrientation(e.target.value as Orientation)}><option value="UPRIGHT">La carta real está derecha</option><option value="REVERSED">La carta real está invertida</option></select>}
     </details>}
 
     {file&&<button type="button" className="secondary-cta camera-recognize-button" disabled={!!progress} onClick={()=>void analyze()}>{progress||`✦ Reconocer esta carta${precisionMode?' con 4 esquinas':''}`}</button>}
@@ -185,6 +189,7 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
       <b>{confidenceLabel[recognition.confidence]}</b>
       <span>{recognition.cropMethod==='MANUAL_CORNERS'?'Rectificación manual por cuatro esquinas':recognition.cropMethod==='AUTO_EDGES'?'Carta localizada por bordes':'Se utilizó el encuadre central'} · calidad {recognition.cropQuality}/100 · separación 1.º/2.º {recognition.margin.toFixed(1)} puntos.</span>
       {recognition.confidence==='INCONCLUSIVE'&&<small>No hay una coincidencia suficientemente clara. Puedes ajustar las cuatro esquinas, seleccionar uno de los candidatos o corregir manualmente.</small>}
+      {recognition.framingWarning&&<small className="camera-framing-warning">El encuadre no parece aislar con claridad una sola carta. Si fotografiaste dos o más cartas juntas, usa una sola carta para este modo.</small>}
     </div>}
 
     {!!candidates.length&&<>
@@ -195,12 +200,13 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
         const selected=selectedCandidateId===candidate.cardId;
         return <button type="button" aria-pressed={selected} className={selected?'selected':''} key={candidate.cardId} onClick={()=>selectCandidate(candidate)}>
           <TarotCardImage card={card} orientation={candidate.orientation} className="camera-candidate-image" eager/>
-          <b>{candidate.rank}. {candidate.cardName}</b><span>{candidate.orientation==='UPRIGHT'?'Derecha':'Invertida'} · similitud {candidate.score}%</span>
-          <small>{selected?'✓ Seleccionada':'Tocar para seleccionar'}</small>
+          <b>{candidate.rank}. {candidate.cardName}</b><span>similitud {candidate.score}% · {candidate.orientation==='UPRIGHT'?'Derecha':'Invertida'}</span>
+          <small>{orientationConfidenceLabel[candidate.orientationConfidence]} · margen {candidate.orientationMargin.toFixed(1)} pts{selected?' · ✓ Seleccionada':' · Tocar para seleccionar'}</small>
         </button>;
       })}</div>
       {selectedCandidate&&<div className="camera-selected-confirm">
         <b>Seleccionada: {selectedCandidate.cardName}</b>
+        <small className={`camera-orientation-note ${selectedCandidate.orientationConfidence.toLowerCase()}`}>Orientación automática: {selectedCandidate.orientation==='UPRIGHT'?'derecha':'invertida'} · {orientationConfidenceLabel[selectedCandidate.orientationConfidence]} · margen {selectedCandidate.orientationMargin.toFixed(1)} pts.</small>
         <div className="orientation-switch"><button type="button" className={selectedOrientation==='UPRIGHT'?'selected':''} onClick={()=>setSelectedOrientation('UPRIGHT')}>↑ Derecha</button><button type="button" className={selectedOrientation==='REVERSED'?'selected':''} onClick={()=>setSelectedOrientation('REVERSED')}>↓ Invertida</button></div>
         <button type="button" className="primary-cta camera-confirm-button" onClick={confirmSelected}>✓ Confirmar candidato seleccionado</button>
       </div>}
@@ -222,7 +228,7 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
       return <div key={`${item.cardId}-${index}`}><TarotCardImage card={card} orientation={item.orientation} className="camera-confirmed-image"/><b>{index+1}. {item.cardName}</b><small>{item.orientation==='UPRIGHT'?'Derecha':'Invertida'}</small><button type="button" onClick={()=>remove(index)}>Quitar</button></div>;
     })}</div>}
 
-    <div className="notice-card info"><b>Beta 3</b><span>Reconocimiento una carta por vez con comparación visual 2.5 y rectificación manual opcional de cuatro esquinas. La selección táctil y la confirmación manual ya no dependen del guardado de estadísticas.</span></div>
+    <div className="notice-card info"><b>Beta 4</b><span>Reconocimiento una carta por vez con orientación 3.0: la identidad se calcula sin depender de derecha/invertida y la orientación se decide después. El editor de cuatro esquinas bloquea selección/copiar del navegador.</span></div>
     {!!confirmed.length&&!countReady&&<div className="notice-card warning">Para pasar directamente a una tirada, confirma 1, 3, 5, 6, 7, 9, 10 o 12 cartas. Ahora tienes {confirmed.length}.</div>}
     <button type="button" className="primary-cta" disabled={!countReady} onClick={continueReading}>Usar {confirmed.length||''} carta{confirmed.length===1?'':'s'} en una lectura</button>
   </section>;
