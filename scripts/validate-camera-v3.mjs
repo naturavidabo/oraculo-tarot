@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+let failed=false;const fail=m=>{failed=true;console.error(`✗ ${m}`)};
+const engine=fs.readFileSync('src/engine/cameraRecognition.ts','utf8');
+for(const marker of ['ANALYSIS_W=64','ANALYSIS_H=104','CameraCorners','renderManualCorners','HOG_BINS=8','descriptorSimilarity','queryDescriptors','MANUAL_CORNERS','recordCameraFeedback','slice(0,12)']) if(!engine.includes(marker)) fail(`Reconocimiento 2.5 incompleto: ${marker}`);
+if(!engine.includes('la telemetría local nunca debe bloquear la confirmación')) fail('El feedback local todavía puede bloquear la confirmación');
+const camera=fs.readFileSync('src/features/camera/CameraView.tsx','utf8');
+for(const marker of ['RECONOCIMIENTO VISUAL 2.5','Ajuste preciso de 4 esquinas','Confirmar candidato seleccionado','Tocar para seleccionar','camera-confirm-button','Selecciona una carta para confirmar','registerFeedback','setConfirmed']) if(!camera.includes(marker)) fail(`Interfaz táctil Beta 3 incompleta: ${marker}`);
+if(!camera.includes('type="button"')) fail('Los controles táctiles no declaran type=button');
+const css=fs.readFileSync('src/styles/global.css','utf8');
+for(const marker of ['touch-action:manipulation','camera-corner-handle','camera-candidate-grid button.selected','pointer-events:auto!important']) if(!css.includes(marker)) fail(`CSS táctil incompleto: ${marker}`);
+const more=fs.readFileSync('src/features/more/MoreView.tsx','utf8');
+for(const marker of ['Diagnóstico de cámara','acierto Top 1','carta real en Top 5','cameraFeedbackSummary']) if(!more.includes(marker)) fail(`Métricas de cámara incompletas: ${marker}`);
+if(!failed) console.log('✓ Reconocimiento visual 2.5 + controles táctiles Beta 3 validados');
+if(failed) process.exit(1);

@@ -1,10 +1,13 @@
 # ORÁCULO TAROT — CHANGELOG
 
-## 1.0.0-beta.2
-- Reconocimiento visual 2.0: bordes + estructura + color + múltiples encuadres.
-- Top 8, confianza no concluyente y ranking completo 1–78.
-- Modo de prueba y métricas locales Top 1 / Top 5.
-- Correcciones de usuario registran el puesto de la carta real sin guardar fotos.
+## 1.0.0-beta.3
+- Corrige el fallo táctil que impedía confirmar candidatos o selección manual en algunos dispositivos.
+- Selección de candidato y confirmación quedan separadas; el candidato elegido se resalta visualmente.
+- El guardado de métricas de cámara es no bloqueante: aunque localStorage falle, la carta se confirma.
+- Reconocimiento visual 2.5: 64×104, gradientes HOG, estructura, bordes, color y múltiples recortes.
+- Top 12 de candidatos y orientación editable antes de confirmar.
+- Añade ajuste táctil de cuatro esquinas para rectificar la carta antes de comparar.
+- Búsqueda manual rápida por nombre de carta.
 - Mantiene 78/78 imágenes locales, motor narrativo 0.6, aclaratorias y catálogo ampliado.
 
 ## 1.0.0-beta.1

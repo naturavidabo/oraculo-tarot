@@ -3,7 +3,7 @@ ORÁCULO TAROT v1.0 Beta — ESTABILIZACIÓN LOCAL DEL MAZO
 1. NO borres el repositorio.
 2. Descomprime este ZIP.
 3. Sube TODO su contenido a la raíz y reemplaza archivos existentes.
-4. Confirma que package.json diga 1.0.0-beta.2.
+4. Confirma que package.json diga 1.0.0-beta.3.
 5. GitHub Actions debe ejecutar npm install. En ese paso, postinstall descargará y validará 78 cartas locales.
 6. Después el workflow vuelve a validar 78/78 y ejecuta Vite.
 7. Si una sola imagen no puede prepararse, el deploy debe FALLAR; no se publicará una beta incompleta.

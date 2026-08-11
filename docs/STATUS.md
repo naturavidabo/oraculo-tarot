@@ -1,28 +1,27 @@
 # Estado de ORÁCULO TAROT
 
-## Versión de trabajo: 0.8.0
+## Versión de trabajo: 1.0.0 Beta 3
 
-Estado: **Beta de estabilización narrativa y visual**.
+Estado: **Beta funcional de cámara asistida y Tarot estable**.
 
-### Disponible
-- PWA en GitHub Pages.
-- 78 cartas estructuradas.
-- Mapeo visual 78/78 con ruta compatible con Pages y caché progresiva.
-- Tirada física y virtual.
-- Orientación derecha/invertida.
-- Motor contextual local 0.5.
-- Interpretación general, lectura por posición, conexión entre cartas y conclusión.
-- Presentación visible en español.
-- Historial, revisiones, aclaratorias, evaluaciones y backups.
-- Biblioteca y aprendizaje.
-- Diagnóstico interno del motor.
-- Cámara: captura/selección local y previsualización.
+### Base estable
+- 78/78 imágenes Rider–Waite locales.
+- Motor interpretativo independiente de imágenes y diagnóstico operativo.
+- Tiradas físicas y virtuales, historial, aclaratorias, biblioteca, aprendizaje y respaldo.
+- Motor narrativo 0.6 en español.
 
-### Aún no se considera terminado
-- Reconocimiento automático de cartas por cámara.
+### Cámara Beta 3
+- Reconocimiento carta por carta.
+- Comparación 2.5 con estructura, bordes, color y gradientes.
+- Top 12, orientación y confianza.
+- Selección táctil y confirmación separadas.
+- Selección manual con búsqueda.
+- Ajuste preciso de cuatro esquinas para mejorar fotos con recorte o perspectiva imperfectos.
+- Métricas locales Top 1 / Top 5 sin guardar fotografías.
+
+### Aún pendiente
+- Mejorar la precisión del reconocimiento con más pruebas reales.
+- Reconocimiento de varias cartas en una sola fotografía.
 - Voz / lectura en altavoz.
-- Capa de IA externa para redacción ampliada.
+- IA externa opcional para redacción ampliada.
 - Sincronización en nube.
-
-### Prioridad de estabilización
-Probar en dispositivo real: carga de imágenes, tirada virtual completa, interpretación, guardado, reapertura desde historial, caché y captura de cámara.

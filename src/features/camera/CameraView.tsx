@@ -3,106 +3,172 @@ import { tarotCards, tarotCardById } from '../../data/cards';
 import { TarotCardImage } from '../../components/TarotCardImage';
 import {
   confirmedCameraCard, recognizeTarotCard, recordCameraFeedback,
-  type CameraCandidate, type CameraRecognitionResult, type CameraConfidence,
+  type CameraCandidate, type CameraRecognitionResult, type CameraConfidence, type CameraCorners,
 } from '../../engine/cameraRecognition';
 import type { Orientation } from '../../types/tarot';
 
 type Confirmed={cardId:string;cardName:string;orientation:Orientation};
 const SESSION_KEY='oraculo_camera_cards_v1';
 const confidenceLabel:Record<CameraConfidence,string>={HIGH:'Coincidencia alta',MEDIUM:'Coincidencia media',LOW:'Coincidencia baja',INCONCLUSIVE:'Reconocimiento no concluyente'};
+const defaultCorners:CameraCorners=[{x:.18,y:.12},{x:.82,y:.12},{x:.82,y:.88},{x:.18,y:.88}];
 
 export function CameraView({back,startManual}:{back:()=>void;startManual:()=>void}){
   const inputRef=useRef<HTMLInputElement>(null);
+  const editorRef=useRef<HTMLDivElement>(null);
   const [preview,setPreview]=useState('');
   const [file,setFile]=useState<File|null>(null);
   const [name,setName]=useState('');
   const [recognition,setRecognition]=useState<CameraRecognitionResult|null>(null);
   const [progress,setProgress]=useState('');
   const [error,setError]=useState('');
+  const [actionMessage,setActionMessage]=useState('');
   const [confirmed,setConfirmed]=useState<Confirmed[]>([]);
   const [manualId,setManualId]=useState('');
   const [manualOrientation,setManualOrientation]=useState<Orientation>('UPRIGHT');
+  const [manualSearch,setManualSearch]=useState('');
   const [testActualId,setTestActualId]=useState('');
   const [testMessage,setTestMessage]=useState('');
+  const [selectedCandidateId,setSelectedCandidateId]=useState('');
+  const [selectedOrientation,setSelectedOrientation]=useState<Orientation>('UPRIGHT');
+  const [precisionMode,setPrecisionMode]=useState(false);
+  const [corners,setCorners]=useState<CameraCorners>(defaultCorners);
+  const [dragging,setDragging]=useState<number|null>(null);
   const used=useMemo(()=>new Set(confirmed.map(x=>x.cardId)),[confirmed]);
-  const supportedCounts=new Set([1,3,5,6,7,9,10,12]);
+  const supportedCounts=useMemo(()=>new Set([1,3,5,6,7,9,10,12]),[]);
   const countReady=supportedCounts.has(confirmed.length);
   const candidates=(recognition?.candidates??[]).filter(x=>!used.has(x.cardId));
+  const selectedCandidate=recognition?.all.find(x=>x.cardId===selectedCandidateId);
+  const manualOptions=useMemo(()=>{
+    const q=manualSearch.trim().toLocaleLowerCase('es');
+    const rows=tarotCards.filter(card=>!used.has(card.id)&&(!q||card.name.toLocaleLowerCase('es').includes(q)));
+    return q?rows.slice(0,30):rows;
+  },[manualSearch,used]);
 
   useEffect(()=>()=>{if(preview) URL.revokeObjectURL(preview)},[preview]);
+
+  useEffect(()=>{
+    if(dragging===null)return;
+    const move=(event:PointerEvent)=>{
+      const rect=editorRef.current?.getBoundingClientRect();if(!rect)return;
+      event.preventDefault();
+      const x=Math.max(.01,Math.min(.99,(event.clientX-rect.left)/rect.width));
+      const y=Math.max(.01,Math.min(.99,(event.clientY-rect.top)/rect.height));
+      setCorners(prev=>prev.map((point,index)=>index===dragging?{x,y}:point) as CameraCorners);
+    };
+    const stop=()=>setDragging(null);
+    window.addEventListener('pointermove',move,{passive:false});
+    window.addEventListener('pointerup',stop);
+    window.addEventListener('pointercancel',stop);
+    return ()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',stop);window.removeEventListener('pointercancel',stop)};
+  },[dragging]);
 
   function choose(next?:File){
     if(!next)return;
     if(preview)URL.revokeObjectURL(preview);
     setPreview(URL.createObjectURL(next));setFile(next);setName(next.name||'Foto de la carta');
-    setRecognition(null);setError('');setProgress('');setTestMessage('');
+    setRecognition(null);setError('');setProgress('');setTestMessage('');setActionMessage('');
+    setSelectedCandidateId('');setPrecisionMode(false);setCorners(defaultCorners);
   }
 
   async function analyze(){
     if(!file)return;
-    setError('');setRecognition(null);setProgress('Preparando imagen y buscando bordes…');setTestMessage('');
+    setError('');setRecognition(null);setSelectedCandidateId('');setProgress(precisionMode?'Rectificando por cuatro esquinas…':'Preparando imagen y buscando bordes…');setTestMessage('');setActionMessage('');
     try{
-      const result=await recognizeTarotCard(file,(done,total)=>setProgress(`Comparación visual multicriterio ${done}/${total}…`));
+      const result=await recognizeTarotCard(file,(done,total)=>setProgress(`Comparación visual 2.5 ${done}/${total}…`),precisionMode?{corners}:{});
       setRecognition(result);
+      const first=result.candidates[0];if(first){setSelectedCandidateId(first.cardId);setSelectedOrientation(first.orientation)}
       if(testActualId){
         const actual=result.all.find(x=>x.cardId===testActualId);
-        const row=recordCameraFeedback(result,testActualId);
+        recordCameraFeedback(result,testActualId);
         const real=tarotCardById.get(testActualId)?.name??'Carta real';
         setTestMessage(actual?`${real} quedó en el puesto ${actual.rank} de 78 · similitud ${actual.score}%. Prueba registrada localmente.`:`${real} no pudo evaluarse. Prueba registrada como no identificada.`);
-        if(row.actualRank>5)setError('La carta real quedó fuera del Top 5. Esta prueba sirve para seguir afinando el reconocedor; usa selección manual para la lectura.');
+        if((actual?.rank??79)>5)setError('La carta real quedó fuera del Top 5. Activa “Ajuste preciso de 4 esquinas” y vuelve a analizar antes de corregir manualmente.');
       }
       if(!result.candidates.length)setError('No se pudieron generar candidatos. Comprueba el diagnóstico 78/78 de imágenes locales.');
     }catch{
-      setError('No se pudo analizar la fotografía. Intenta que la carta ocupe la mayor parte del encuadre, con buena luz y sin reflejos.');
+      setError('No se pudo analizar la fotografía. Intenta que la carta ocupe la mayor parte del encuadre o usa el ajuste preciso de cuatro esquinas.');
     }finally{setProgress('');}
   }
 
   function registerFeedback(actualCardId:string){
     if(!recognition||testActualId)return;
-    const row=recordCameraFeedback(recognition,actualCardId);
-    const actual=recognition.all.find(x=>x.cardId===actualCardId);
-    setTestMessage(actual?`Corrección registrada: la carta real estaba en el puesto ${actual.rank} de 78.`:`Corrección registrada: la carta real no apareció en el ranking.`);
-    return row;
+    try{
+      const actual=recognition.all.find(x=>x.cardId===actualCardId);
+      recordCameraFeedback(recognition,actualCardId);
+      setTestMessage(actual?`Corrección registrada: la carta real estaba en el puesto ${actual.rank} de 78.`:'Corrección registrada: la carta real no apareció en el ranking.');
+    }catch{/* las estadísticas nunca pueden bloquear el botón Confirmar */}
   }
 
   function confirm(cardId:string,orientation:Orientation){
+    if(!cardId)return;
     if(used.has(cardId)){setError('Esa carta ya fue confirmada en esta tirada.');return;}
-    registerFeedback(cardId);
-    setConfirmed(prev=>[...prev,confirmedCameraCard(cardId,orientation)]);
-    setRecognition(null);setFile(null);if(preview)URL.revokeObjectURL(preview);setPreview('');setName('');setError('');
-    setManualId('');setManualOrientation('UPRIGHT');setTestActualId('');
+    try{
+      const item=confirmedCameraCard(cardId,orientation);
+      setConfirmed(prev=>[...prev,item]);
+      setActionMessage(`✓ ${item.cardName} confirmada ${orientation==='UPRIGHT'?'derecha':'invertida'}.`);
+      setError('');
+      registerFeedback(cardId);
+      setRecognition(null);setFile(null);if(preview)URL.revokeObjectURL(preview);setPreview('');setName('');
+      setManualId('');setManualSearch('');setManualOrientation('UPRIGHT');setTestActualId('');setSelectedCandidateId('');setPrecisionMode(false);setCorners(defaultCorners);
+    }catch{
+      setError('No se pudo confirmar la carta. Vuelve a tocar “Confirmar” o selecciónala manualmente.');
+    }
   }
 
+  function selectCandidate(candidate:CameraCandidate){
+    setSelectedCandidateId(candidate.cardId);setSelectedOrientation(candidate.orientation);setActionMessage('');setError('');
+  }
+  function confirmSelected(){if(selectedCandidateId)confirm(selectedCandidateId,selectedOrientation)}
   function addManual(){if(manualId)confirm(manualId,manualOrientation)}
   function remove(index:number){setConfirmed(prev=>prev.filter((_,i)=>i!==index))}
   function continueReading(){
     sessionStorage.setItem(SESSION_KEY,JSON.stringify(confirmed.map(({cardId,orientation})=>({cardId,orientation}))));
     startManual();
   }
+  function resetCorners(){setCorners(defaultCorners)}
 
   const manualRank=manualId&&recognition?recognition.all.find(x=>x.cardId===manualId):undefined;
+  const polygon=corners.map(point=>`${point.x*100},${point.y*100}`).join(' ');
 
   return <section className="page camera-page">
-    <button className="text-button" onClick={back}>← Tarot</button>
-    <span className="eyebrow">CÁMARA · RECONOCIMIENTO VISUAL 2.0 · BETA 2</span>
+    <button type="button" className="text-button" onClick={back}>← Tarot</button>
+    <span className="eyebrow">CÁMARA · RECONOCIMIENTO VISUAL 2.5 · BETA 3</span>
     <h1>Reconocer cartas físicas</h1>
-    <p className="lead">Fotografía <b>una carta por vez</b>. ORÁCULO TAROT intenta localizarla dentro de la foto y compara <b>estructura, bordes y color</b> contra las 78 Rider–Waite. La confirmación humana sigue siendo obligatoria.</p>
+    <p className="lead">Fotografía <b>una carta por vez</b>. ORÁCULO TAROT compara estructura, bordes, color y orientación contra las 78 Rider–Waite. Ahora puedes <b>seleccionar primero</b> un candidato y confirmarlo con un botón táctil separado.</p>
 
     <div className="camera-guide">
       <b>Para mejorar el reconocimiento</b>
       <span>Haz que la carta ocupe aproximadamente 60–85% de la foto.</span>
       <span>Incluye los cuatro bordes; evita sombras fuertes, dedos y reflejos.</span>
-      <span>Puede tolerar una inclinación pequeña, pero intenta fotografiar casi de frente.</span>
+      <span>Si la carta correcta queda lejos del Top 5, activa el ajuste preciso de cuatro esquinas.</span>
     </div>
 
-    <div className="camera-frame">
+    {!precisionMode&&<div className="camera-frame">
       {preview?<img src={preview} alt="Vista previa de la carta"/>:<div className="camera-frame-empty"><span>▯</span><b>Una carta dentro de esta guía</b></div>}
       <div className="camera-guide-box" aria-hidden="true" />
-    </div>
+    </div>}
+
+    {preview&&precisionMode&&<div className="camera-precision-panel">
+      <div className="section-title compact"><h2>Ajuste preciso de 4 esquinas</h2><span>táctil</span></div>
+      <p className="muted">Arrastra cada punto dorado hasta una esquina real de la carta: superior izquierda, superior derecha, inferior derecha e inferior izquierda. Después vuelve a reconocer.</p>
+      <div ref={editorRef} className="camera-corner-editor">
+        <img src={preview} alt="Ajuste de las cuatro esquinas" draggable={false}/>
+        <svg className="camera-corner-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points={polygon}/></svg>
+        {corners.map((point,index)=><button
+          type="button" key={index} className="camera-corner-handle" aria-label={`Esquina ${index+1}`}
+          style={{left:`${point.x*100}%`,top:`${point.y*100}%`}}
+          onPointerDown={event=>{event.preventDefault();setDragging(index)}}>{index+1}</button>)}
+      </div>
+      <button type="button" className="secondary-cta" onClick={resetCorners}>Restablecer esquinas</button>
+    </div>}
     {name&&<small className="muted camera-file-name">{name}</small>}
 
-    <button className="primary-cta" onClick={()=>inputRef.current?.click()}>📷 Tomar foto / elegir imagen</button>
+    <button type="button" className="primary-cta" onClick={()=>inputRef.current?.click()}>📷 Tomar foto / elegir imagen</button>
     <input ref={inputRef} hidden type="file" accept="image/*" capture="environment" onChange={e=>choose(e.target.files?.[0])}/>
+
+    {file&&<div className="camera-precision-toggle">
+      <button type="button" className={precisionMode?'secondary-cta selected':'secondary-cta'} onClick={()=>{setPrecisionMode(v=>!v);setRecognition(null);setSelectedCandidateId('')}}>{precisionMode?'✓ Ajuste preciso activado':'◫ Ajustar 4 esquinas'}</button>
+    </div>}
 
     {file&&<details className="explanation-details camera-calibration">
       <summary>Modo de prueba: sé cuál es la carta y quiero medir el reconocimiento</summary>
@@ -110,45 +176,54 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
       <select value={testActualId} onChange={e=>setTestActualId(e.target.value)}><option value="">No usar modo de prueba</option>{tarotCards.map(card=><option value={card.id} key={card.id}>{card.name}</option>)}</select>
     </details>}
 
-    {file&&<button className="secondary-cta" disabled={!!progress} onClick={()=>void analyze()}>{progress||'✦ Reconocer esta carta'}</button>}
+    {file&&<button type="button" className="secondary-cta camera-recognize-button" disabled={!!progress} onClick={()=>void analyze()}>{progress||`✦ Reconocer esta carta${precisionMode?' con 4 esquinas':''}`}</button>}
     {error&&<div className="notice-card warning">{error}</div>}
+    {actionMessage&&<div className="notice-card success">{actionMessage}</div>}
     {testMessage&&<div className="notice-card info">{testMessage}</div>}
 
     {recognition&&<div className={`camera-recognition-status ${recognition.confidence.toLowerCase()}`}>
       <b>{confidenceLabel[recognition.confidence]}</b>
-      <span>{recognition.cropMethod==='AUTO_EDGES'?'Carta localizada por bordes':'Se utilizó el encuadre central'} · calidad de encuadre {recognition.cropQuality}/100 · separación entre 1.º y 2.º {recognition.margin.toFixed(1)} puntos.</span>
-      {recognition.confidence==='INCONCLUSIVE'&&<small>La aplicación no considera seguro ningún candidato. Confirma manualmente o vuelve a fotografiar.</small>}
+      <span>{recognition.cropMethod==='MANUAL_CORNERS'?'Rectificación manual por cuatro esquinas':recognition.cropMethod==='AUTO_EDGES'?'Carta localizada por bordes':'Se utilizó el encuadre central'} · calidad {recognition.cropQuality}/100 · separación 1.º/2.º {recognition.margin.toFixed(1)} puntos.</span>
+      {recognition.confidence==='INCONCLUSIVE'&&<small>No hay una coincidencia suficientemente clara. Puedes ajustar las cuatro esquinas, seleccionar uno de los candidatos o corregir manualmente.</small>}
     </div>}
 
     {!!candidates.length&&<>
       <div className="section-title"><h2>Candidatos</h2><span>Top {candidates.length}</span></div>
-      <p className="muted">La similitud es un puntaje visual comparativo, no una probabilidad. Si la carta correcta no aparece, usa la selección manual y esa corrección ayudará a medir el sistema.</p>
+      <p className="muted">Toca una carta para <b>seleccionarla</b>. La selección se ilumina; recién después usa el botón “Confirmar candidato seleccionado”.</p>
       <div className="camera-candidate-grid">{candidates.map((candidate:CameraCandidate)=>{
         const card=tarotCardById.get(candidate.cardId)!;
-        return <button key={candidate.cardId} onClick={()=>confirm(candidate.cardId,candidate.orientation)}>
+        const selected=selectedCandidateId===candidate.cardId;
+        return <button type="button" aria-pressed={selected} className={selected?'selected':''} key={candidate.cardId} onClick={()=>selectCandidate(candidate)}>
           <TarotCardImage card={card} orientation={candidate.orientation} className="camera-candidate-image" eager/>
           <b>{candidate.rank}. {candidate.cardName}</b><span>{candidate.orientation==='UPRIGHT'?'Derecha':'Invertida'} · similitud {candidate.score}%</span>
+          <small>{selected?'✓ Seleccionada':'Tocar para seleccionar'}</small>
         </button>;
       })}</div>
+      {selectedCandidate&&<div className="camera-selected-confirm">
+        <b>Seleccionada: {selectedCandidate.cardName}</b>
+        <div className="orientation-switch"><button type="button" className={selectedOrientation==='UPRIGHT'?'selected':''} onClick={()=>setSelectedOrientation('UPRIGHT')}>↑ Derecha</button><button type="button" className={selectedOrientation==='REVERSED'?'selected':''} onClick={()=>setSelectedOrientation('REVERSED')}>↓ Invertida</button></div>
+        <button type="button" className="primary-cta camera-confirm-button" onClick={confirmSelected}>✓ Confirmar candidato seleccionado</button>
+      </div>}
     </>}
 
     <details className="explanation-details camera-manual" open={recognition?.confidence==='INCONCLUSIVE'}><summary>Elegir manualmente / corregir reconocimiento</summary>
-      <div className="clarifier-form">
-        <select value={manualId} onChange={e=>setManualId(e.target.value)}><option value="">Seleccionar carta real…</option>{tarotCards.map(card=><option key={card.id} value={card.id} disabled={used.has(card.id)}>{card.name}</option>)}</select>
+      <div className="clarifier-form camera-manual-form">
+        <input className="search" value={manualSearch} onChange={e=>setManualSearch(e.target.value)} placeholder="Buscar carta: Mago, As de Copas…" />
+        <select value={manualId} onChange={e=>setManualId(e.target.value)}><option value="">Seleccionar carta real…</option>{manualOptions.map(card=><option key={card.id} value={card.id}>{card.name}</option>)}</select>
         <select value={manualOrientation} onChange={e=>setManualOrientation(e.target.value as Orientation)}><option value="UPRIGHT">Derecha</option><option value="REVERSED">Invertida</option></select>
         {manualRank&&<div className="camera-rank-note">En esta foto, <b>{manualRank.cardName}</b> quedó en el puesto <b>{manualRank.rank}/78</b> con similitud {manualRank.score}%.</div>}
-        <button className="secondary-cta" disabled={!manualId} onClick={addManual}>Confirmar carta real</button>
+        <button type="button" className="primary-cta camera-confirm-button" disabled={!manualId} onClick={addManual}>{manualId?'✓ Confirmar carta real':'Selecciona una carta para confirmar'}</button>
       </div>
     </details>
 
     <div className="section-title"><h2>Cartas confirmadas</h2><span>{confirmed.length}</span></div>
     {!confirmed.length?<div className="notice-card info">Todavía no has confirmado ninguna carta.</div>:<div className="camera-confirmed-grid">{confirmed.map((item,index)=>{
       const card=tarotCardById.get(item.cardId)!;
-      return <div key={`${item.cardId}-${index}`}><TarotCardImage card={card} orientation={item.orientation} className="camera-confirmed-image"/><b>{index+1}. {item.cardName}</b><small>{item.orientation==='UPRIGHT'?'Derecha':'Invertida'}</small><button onClick={()=>remove(index)}>Quitar</button></div>;
+      return <div key={`${item.cardId}-${index}`}><TarotCardImage card={card} orientation={item.orientation} className="camera-confirmed-image"/><b>{index+1}. {item.cardName}</b><small>{item.orientation==='UPRIGHT'?'Derecha':'Invertida'}</small><button type="button" onClick={()=>remove(index)}>Quitar</button></div>;
     })}</div>}
 
-    <div className="notice-card info"><b>Beta 2</b><span>Reconocimiento una carta por vez. Si no hay coincidencia clara, ORÁCULO TAROT lo indica en vez de fingir certeza. La selección manual permanece disponible de forma permanente.</span></div>
+    <div className="notice-card info"><b>Beta 3</b><span>Reconocimiento una carta por vez con comparación visual 2.5 y rectificación manual opcional de cuatro esquinas. La selección táctil y la confirmación manual ya no dependen del guardado de estadísticas.</span></div>
     {!!confirmed.length&&!countReady&&<div className="notice-card warning">Para pasar directamente a una tirada, confirma 1, 3, 5, 6, 7, 9, 10 o 12 cartas. Ahora tienes {confirmed.length}.</div>}
-    <button className="primary-cta" disabled={!countReady} onClick={continueReading}>Usar {confirmed.length||''} carta{confirmed.length===1?'':'s'} en una lectura</button>
+    <button type="button" className="primary-cta" disabled={!countReady} onClick={continueReading}>Usar {confirmed.length||''} carta{confirmed.length===1?'':'s'} en una lectura</button>
   </section>;
 }

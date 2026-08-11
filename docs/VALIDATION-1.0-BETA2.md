@@ -1,8 +1,8 @@
-# ORÁCULO TAROT 1.0.0 Beta 2 — validación
+# ORÁCULO TAROT 1.0.0 Beta 3 — validación
 
 Base estable: v0.9.1 (78/78 imágenes locales + motor interpretativo operativo). Beta 1 agregó cámara asistida, aclaratorias, motor 0.6 y catálogo ampliado.
 
-## Objetivo Beta 2
+## Objetivo Beta 3
 Mejorar sustancialmente el reconocimiento de una sola carta fotografiada sin presentar coincidencias débiles como certeza.
 
 ## Arquitectura visual 2.0
