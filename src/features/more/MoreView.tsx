@@ -33,7 +33,7 @@ export function MoreView(){
   }
 
   return <section className="page">
-    <span className="eyebrow">MÁS · ORÁCULO TAROT 0.9.1</span><h1>Herramientas</h1>
+    <span className="eyebrow">MÁS · ORÁCULO TAROT 1.0 BETA</span><h1>Herramientas</h1>
     <div className="feature-card static"><b>Respaldo local</b><span>Exporta lecturas, personas, notas, favoritos, evaluaciones y progreso de aprendizaje.</span></div>
     <div className="backup-actions">
       <button className="primary-cta" disabled={busy} onClick={()=>void backup()}>{busy?'Procesando…':'Crear respaldo'}</button>
@@ -43,7 +43,7 @@ export function MoreView(){
     {message&&<div className="notice-card">{message}</div>}
 
     <div className="section-title"><h2>Diagnóstico visual</h2><span>78 cartas</span></div>
-    <p className="muted">Comprueba que la publicación contiene físicamente las 78 imágenes Rider–Waite. En 0.9.1 esta prueba revisa únicamente los archivos locales de la PWA; no cuenta servidores externos como válidos.</p>
+    <p className="muted">Comprueba que la publicación contiene físicamente las 78 imágenes Rider–Waite. Esta prueba revisa únicamente los archivos locales de la PWA; no cuenta servidores externos como válidos.</p>
     <button className="secondary-cta" onClick={()=>void checkImages()} disabled={!!imageProgress}>{imageProgress||'Comprobar las 78 imágenes'}</button>
     {imageDiagnostic&&<div className={`diagnostic-panel ${imageDiagnostic.ok?'ok':'fail'}`}>
       <b>{imageDiagnostic.ok?`✓ ${imageDiagnostic.loaded}/78 imágenes locales operativas`:`✗ ${imageDiagnostic.loaded}/78 imágenes locales operativas`}</b>
@@ -54,6 +54,11 @@ export function MoreView(){
     <p className="muted">Ejecuta internamente una tirada conocida: 7 de Oros · As de Espadas · 10 de Espadas. Comprueba cartas, interpretación general, conclusión y explicación.</p>
     <button className="secondary-cta" onClick={()=>setDiagnostic(runEngineSelfTest())}>Ejecutar diagnóstico del motor</button>
     {diagnostic&&<div className={`diagnostic-panel ${diagnostic.ok?'ok':'fail'}`}><b>{diagnostic.ok?'✓ Motor interpretativo operativo':'✗ Motor interpretativo con falla'}</b>{diagnostic.checks.map(item=><div key={item.label}><span>{item.ok?'✓':'✗'} {item.label}</span><small>{item.detail}</small></div>)}</div>}
+
+    <div className="section-title"><h2>Funciones Beta 1.0</h2><span>nuevo bloque</span></div>
+    <div className="feature-card static"><b>📷 Reconocimiento asistido</b><span>Compara una carta fotografiada con las 78 imágenes locales y pide confirmación antes de usarla.</span></div>
+    <div className="feature-card static"><b>✦ Aclaratorias</b><span>Añade hasta dos cartas aclaratorias por posición sin borrar la lectura original.</span></div>
+    <div className="feature-card static"><b>Catálogo ampliado</b><span>Incluye decisión, trabajo, dinero, relación completa, Cruz Celta y rueda anual.</span></div>
 
     <div className="section-title"><h2>Privacidad</h2><span>local</span></div>
     <p className="muted">Las lecturas se guardan en IndexedDB del dispositivo. Esta versión no necesita Supabase para conservarlas.</p>

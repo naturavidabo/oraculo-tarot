@@ -14,7 +14,7 @@ export function runEngineSelfTest():SelfTestResult{
         {positionId:'ACTION',cardId:'RWS_S_10',orientation:'UPRIGHT'},
       ],
       options:{depth:'NORMAL',style:'NORMAL',drawMethod:'VIRTUAL',reversalsEnabled:true},
-      versions:{content:'1.0.0',engine:'0.5.0'},
+      versions:{content:'1.0.0',engine:'0.6.0'},
     });
     add('Motor devuelve 3 posiciones',result.sections.length===3,`${result.sections.length} posiciones`);
     add('Respuesta directa no vacía',result.directAnswer.trim().length>20,result.directAnswer.slice(0,120));
@@ -25,6 +25,20 @@ export function runEngineSelfTest():SelfTestResult{
     const visibleText=[result.headline,result.directAnswer,result.globalInterpretation,result.connectionSummary,result.conclusion,...result.why.map(x=>`${x.claim} ${x.explanation}`)].join(' ');
     const leaked=/\b(?:LOW|MEDIUM|HIGH|HIGH_EMOTION|DESIRE_BLOCKED|CURRENT_FORM_CLOSING|COMMUNICATION_OPENING)\b/.test(visibleText);
     add('Narrativa visible sin códigos internos en inglés',!leaked,leaked?'Se detectó un código interno':'Presentación en español');
+    const clarified=interpretTarot({
+      schemaVersion:'1.0',requestId:crypto.randomUUID(),
+      question:{text:'¿Qué necesita aclararse?',language:'es',category:'GENERAL',type:'GENERAL',temporalScope:'PRESENT_NEAR_FUTURE'},
+      spread:{id:'SPREAD_FTA_03',version:'1.0'},
+      cards:[
+        {positionId:'FEELINGS',cardId:'RWS_C_13',orientation:'UPRIGHT',role:'PRIMARY'},
+        {positionId:'THOUGHTS',cardId:'RWS_S_02',orientation:'UPRIGHT',role:'PRIMARY'},
+        {positionId:'ACTION',cardId:'RWS_W_08',orientation:'UPRIGHT',role:'PRIMARY'},
+        {positionId:'FEELINGS',parentPositionId:'FEELINGS',cardId:'RWS_P_04',orientation:'UPRIGHT',role:'CLARIFIER'},
+      ],
+      options:{depth:'NORMAL',style:'NORMAL',drawMethod:'PHYSICAL',reversalsEnabled:true},
+      versions:{content:'1.0.0',engine:'0.6.0'},
+    });
+    add('Aclaratoria integrada sin sustituir la carta principal',clarified.sections.filter(x=>x.role==='PRIMARY').length===3&&clarified.sections.some(x=>x.role==='CLARIFIER'),`${clarified.sections.length} secciones`);
   }catch(error){add('Ejecución del motor',false,error instanceof Error?error.message:String(error));}
   return {ok:checks.every(x=>x.ok),checks};
 }

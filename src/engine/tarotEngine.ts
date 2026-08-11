@@ -173,6 +173,37 @@ function safeguardsFor(cards:TarotCard[], motifs:string[]) {
   return safeguards;
 }
 
+
+function bridgeNarrative(items:Array<{card:TarotCard;vectors:Partial<Record<TarotDimension,number>>;position:{label:string;context:string};entry:{orientation:Orientation}}>) {
+  const bridges:string[]=[];
+  for(let i=0;i<items.length-1;i++){
+    const a=items[i],b=items[i+1];
+    const av=(key:TarotDimension)=>a.vectors[key]??0;
+    const bv=(key:TarotDimension)=>b.vectors[key]??0;
+    let relation='';
+    if(av('movement')<=0&&bv('movement')>=3.5) relation=`La secuencia pasa de una energía más detenida en ${a.card.name} a una disposición claramente más móvil con ${b.card.name}`;
+    else if(av('openness')<=-2&&bv('communication')>=3.5) relation=`Entre ${a.card.name} y ${b.card.name} aparece un cambio desde la reserva hacia una mayor posibilidad de expresar o comunicar`;
+    else if(av('emotion')>=3.5&&bv('mentalIntensity')>=3.5) relation=`Lo que primero aparece como carga emocional con ${a.card.name} pasa a ser procesado mentalmente en ${b.card.name}`;
+    else if(av('uncertainty')>=3.5&&bv('clarity')>=3.5) relation=`${b.card.name} introduce claridad en un tramo que ${a.card.name} dejaba más incierto o abierto`;
+    else if(av('conflict')>=3.5&&bv('healing')>=3.5) relation=`Después de la tensión de ${a.card.name}, ${b.card.name} introduce una posibilidad de regulación o recuperación`;
+    else if(av('stability')>=3.5&&bv('transformation')>=4) relation=`La estabilidad representada por ${a.card.name} entra en revisión cuando ${b.card.name} exige cambio o transformación`;
+    else if(av('transformation')>=4&&bv('integration')>=3.5) relation=`${a.card.name} abre un cambio importante y ${b.card.name} muestra cómo ese cambio puede empezar a integrarse`;
+    else if(av('desire')>=3.5&&bv('manifestation')<=2) relation=`El impulso presente en ${a.card.name} no encuentra todavía la misma facilidad para materializarse en ${b.card.name}`;
+    else relation=`${a.card.name} prepara el contexto de ${b.card.name}: la segunda carta no borra a la primera, sino que muestra cómo continúa o modifica esa energía`;
+    bridges.push(`${relation}.`);
+  }
+  return bridges.join(' ');
+}
+
+function clarifierNarrative(items:Array<{card:TarotCard;position:{label:string;context:string};entry:{orientation:Orientation};vectors:Partial<Record<TarotDimension,number>>}>) {
+  if(!items.length)return '';
+  return `Las cartas aclaratorias añaden matices sin sustituir a las principales. ${items.map(item=>{
+    const orientation=item.entry.orientation==='REVERSED'?' invertida':'';
+    const nuance=contextualNuance(item.position.context,item.vectors,item.card);
+    return `En “${item.position.label}”, ${item.card.name}${orientation} precisa la lectura: ${cleanSentence(item.card.quick).toLocaleLowerCase('es')}${nuance?`; ${cleanSentence(nuance).toLocaleLowerCase('es')}`:''}`;
+  }).join('. ')}.`;
+}
+
 export function interpretTarot(input:InterpretationRequest):InterpretationResult {
   const parsed=interpretationRequestSchema.parse(input);
   const spread=spreads.find(s=>s.id===parsed.spread.id && s.version===parsed.spread.version);
@@ -342,6 +373,9 @@ export function interpretTarot(input:InterpretationRequest):InterpretationResult
     ? `El recorrido va desde ${first.card.name}, que ${humanCode(first.card.mechanism,mechanismLabel).toLocaleLowerCase('es')}, hasta ${last.card.name}, que ${humanCode(last.card.mechanism,mechanismLabel).toLocaleLowerCase('es')}; por eso importa leer el orden y no solo las cartas aisladas.`
     : '';
 
+  const bridgeText=bridgeNarrative(primaryResolved);
+  const clarifierText=clarifierNarrative(clarifierResolved);
+
   const ftaGlobal=spread.id==='SPREAD_FTA_03'&&primaryResolved.length===3 ? (()=>{
     const [feel,thought,action]=primaryResolved;
     const feelNuance=contextualNuance(feel.position.context,feel.vectors,feel.card);
@@ -360,13 +394,15 @@ export function interpretTarot(input:InterpretationRequest):InterpretationResult
     const synthesis=synthesisParts.length
       ? `Viendo las tres cartas juntas, ${synthesisParts.join('; ')}. La lectura, por tanto, no se reduce al significado aislado de ninguna carta: importa la secuencia entre sentir, pensar y actuar.`
       : `Viendo las tres cartas juntas, ninguna dimensión domina por completo a las demás. La lectura depende sobre todo de cómo se enlazan sentimiento, pensamiento y acción, por lo que conviene conservar los matices de cada posición.`;
-    return [firstParagraph,secondParagraph,thirdParagraph,synthesis,motifNarrative,tensionNarrative,combinationNarrative].filter(Boolean).join('\n\n');
+    return [firstParagraph,secondParagraph,thirdParagraph,synthesis,bridgeText,clarifierText,motifNarrative,tensionNarrative,combinationNarrative].filter(Boolean).join('\n\n');
   })() : '';
 
   const globalInterpretation=ftaGlobal || [
     `Respecto a la consulta “${parsed.question.text}”, la tirada se entiende mejor como un conjunto y no como ${primaryResolved.length} definiciones separadas.`,
     dominantDimensions.length?`Los aspectos con mayor peso son ${dominantDimensions.join(', ')}.`:'',
     positionNarrative,
+    bridgeText,
+    clarifierText,
     motifNarrative,
     tensionNarrative,
     combinationNarrative,
@@ -379,8 +415,14 @@ export function interpretTarot(input:InterpretationRequest):InterpretationResult
   ].join(' ');
 
   const lastOrientation=last?.entry.orientation==='REVERSED'?' invertida':'';
+  const concludingThemes:string[]=[];
+  if(motifs.includes('COMMUNICATION_OPENING')) concludingThemes.push('hay una vía para que algo se exprese o se ponga en movimiento');
+  if(motifs.includes('DESIRE_BLOCKED')||tensions.includes('DESIRE_VS_MANIFESTATION')) concludingThemes.push('el impulso no se manifiesta con la misma facilidad con la que se siente');
+  if(motifs.includes('LONG_TERM_BUILD')||motifs.includes('COMMITMENT_PATTERN')) concludingThemes.push('la estabilidad depende de hechos sostenidos y no solo de intención');
+  if(motifs.includes('CLOSURE_TRANSFORMATION')) concludingThemes.push('la forma actual de la situación necesita cerrar o transformarse');
+  if(motifs.includes('HIGH_UNCERTAINTY')||motifs.includes('HIDDEN_INFORMATION')) concludingThemes.push('todavía existe información insuficiente para convertir la lectura en una afirmación tajante');
   const conclusion=last
-    ? `Como cierre de la tirada, ${last.card.name}${lastOrientation} ocupa “${last.position.label}”. ${cleanSentence(last.card.quick)}.${last.entry.orientation==='REVERSED'?` ${cleanSentence(last.card.reversal.summary)}.`:''} Al relacionarla con las cartas anteriores, esta posición marca la dirección hacia la que tiende el conjunto. Es una orientación simbólica probable, no un hecho garantizado.`
+    ? `Como cierre, ${last.card.name}${lastOrientation} ocupa “${last.position.label}”. ${cleanSentence(last.card.quick)}.${last.entry.orientation==='REVERSED'?` ${cleanSentence(last.card.reversal.summary)}.`:''}${concludingThemes.length?` Al integrar el conjunto, ${concludingThemes.join('; ')}.`:''} La tendencia final debe entenderse como la dirección simbólica más coherente con estas cartas, no como un hecho garantizado.`
     : 'La tirada ofrece una orientación simbólica contextual y no una predicción garantizada.';
 
   return interpretationResultSchema.parse({

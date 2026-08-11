@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'ORÁCULO TAROT',
         short_name: 'ORÁCULO',
-        description: 'Tarot Rider-Waite con biblioteca, tiradas físicas y virtuales, interpretación local y diagnóstico visual.',
+        description: 'Tarot Rider-Waite con 78 cartas locales, tiradas físicas y virtuales, cámara asistida, aclaratorias e interpretación narrativa local.',
         theme_color: '#07111f',
         background_color: '#07111f',
         display: 'standalone',

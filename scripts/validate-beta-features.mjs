@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+let failed=false;
+const fail=m=>{failed=true;console.error(`✗ ${m}`)};
+const spreads=fs.readFileSync('src/data/spreads.ts','utf8');
+for(const id of ['SPREAD_YESNO_03','SPREAD_DECISION_07','SPREAD_WORK_07','SPREAD_MONEY_07','SPREAD_RELATION_09','SPREAD_CELTIC_10','SPREAD_YEAR_12']) if(!spreads.includes(id)) fail(`Falta tirada oficial ${id}`);
+const camera=fs.readFileSync('src/features/camera/CameraView.tsx','utf8');
+for(const marker of ['Reconocer esta carta','Candidatos','similitud','Usar {confirmed.length','oraculo_camera_cards_v1']) if(!camera.includes(marker)) fail(`Cámara asistida incompleta: ${marker}`);
+const matcher=fs.readFileSync('src/engine/cameraRecognition.ts','utf8');
+for(const marker of ['recognizeTarotCard','referenceCache','orientation','slice(0,5)']) if(!matcher.includes(marker)) fail(`Matcher de cámara incompleto: ${marker}`);
+const view=fs.readFileSync('src/features/tarot/TarotView.tsx','utf8');
+for(const marker of ['Carta aclaratoria','addClarifierRevision','Sacar aclaratoria virtual','oraculo_camera_cards_v1']) if(!view.includes(marker)) fail(`Flujo Tarot Beta incompleto: ${marker}`);
+const engine=fs.readFileSync('src/engine/tarotEngine.ts','utf8');
+for(const marker of ['bridgeNarrative','clarifierNarrative','engine:\'0.6.0\'']) if(!engine.includes(marker) && marker!="engine:'0.6.0'") fail(`Motor narrativo 0.6 incompleto: ${marker}`);
+if(!engine.includes('bridgeNarrative')||!engine.includes('clarifierText')) fail('Narrativa no integra puentes/aclaratorias');
+if(!failed) console.log('✓ Bloque funcional ORÁCULO TAROT 1.0 Beta validado');
+if(failed) process.exit(1);

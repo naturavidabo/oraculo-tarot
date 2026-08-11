@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { tarotCards, tarotCardById } from '../../data/cards';
 import { spreads } from '../../data/spreads';
 import { interpretTarot } from '../../engine/tarotEngine';
 import type { Orientation, TarotDimension } from '../../types/tarot';
 import type { InterpretationResult } from '../../engine/contracts';
-import { saveInterpretedReading } from '../../db/readings';
+import { addClarifierRevision, saveInterpretedReading } from '../../db/readings';
 import { dimensionLabels } from '../../engine/contextProfile';
 import { classifyQuestion, recommendSpreads } from '../../engine/questionClassifier';
 import { cutVirtualDeck, prepareVirtualDeck, type PreparedCard } from '../../engine/drawEngine';
@@ -30,7 +30,7 @@ function errorMessage(error:unknown){
 }
 
 function ReadingResult({
-  result, spreadName, savedId, presentation, setPresentation, restart,
+  result, spreadName, savedId, presentation, setPresentation, restart, onClarifier, clarifierBusy, clarifierMessage,
 }:{
   result:InterpretationResult;
   spreadName:string;
@@ -38,18 +38,25 @@ function ReadingResult({
   presentation:Presentation;
   setPresentation:(mode:Presentation)=>void;
   restart:()=>void;
+  onClarifier:(positionId:string,cardId:string,orientation:Orientation)=>Promise<void>;
+  clarifierBusy:boolean;
+  clarifierMessage:string;
 }){
-  const topDimensions=Object.entries(result.dimensions)
+  const topDimensions=(Object.entries(result.dimensions) as [string,number][])
     .sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))
     .slice(0,presentation==='DEEP'||presentation==='TEACHER'?10:6);
   const primarySections=result.sections.filter(x=>x.role==='PRIMARY');
   const showNormal=presentation!=='QUICK';
   const showDeep=presentation==='DEEP'||presentation==='TEACHER';
   const showTeacher=presentation==='TEACHER';
+  const [clarifierPosition,setClarifierPosition]=useState(primarySections[0]?.positionId??'');
+  const [clarifierCard,setClarifierCard]=useState('');
+  const [clarifierOrientation,setClarifierOrientation]=useState<Orientation>('UPRIGHT');
+  const usedCards=new Set(result.sections.map(x=>x.cardId));
 
   return <section className="page reading-result-page">
     <button className="text-button" onClick={restart}>← Nueva lectura</button>
-    <span className="eyebrow">ORÁCULO TAROT · BETA 0.9</span>
+    <span className="eyebrow">ORÁCULO TAROT · BETA 1.0</span>
     <h1>{result.headline}</h1>
     <p className="lead">{result.directAnswer}</p>
 
@@ -115,6 +122,29 @@ function ReadingResult({
       })}</div>
     </>}
 
+
+    {showNormal && savedId && <>
+      <div className="section-title"><h2>Carta aclaratoria</h2><span>revisión sin borrar la lectura original</span></div>
+      <div className="clarifier-panel">
+        <p className="muted">Úsala solo cuando una posición necesite matiz. La aclaratoria pesa menos que la carta principal y crea una nueva revisión de la lectura.</p>
+        <div className="clarifier-form">
+          <select value={clarifierPosition} onChange={e=>setClarifierPosition(e.target.value)}>{primarySections.map(section=><option key={section.positionId} value={section.positionId}>{section.label}</option>)}</select>
+          <select value={clarifierCard} onChange={e=>setClarifierCard(e.target.value)}><option value="">Elegir carta física…</option>{tarotCards.map(card=><option key={card.id} value={card.id} disabled={usedCards.has(card.id)}>{card.name}</option>)}</select>
+          <select value={clarifierOrientation} onChange={e=>setClarifierOrientation(e.target.value as Orientation)}><option value="UPRIGHT">Derecha</option><option value="REVERSED">Invertida</option></select>
+          <button className="secondary-cta" disabled={!clarifierCard||clarifierBusy} onClick={()=>void onClarifier(clarifierPosition,clarifierCard,clarifierOrientation).then(()=>setClarifierCard(''))}>{clarifierBusy?'Añadiendo…':'Añadir aclaratoria física'}</button>
+          <button className="secondary-cta" disabled={clarifierBusy} onClick={()=>{
+            const available=tarotCards.filter(card=>!usedCards.has(card.id));
+            if(!available.length)return;
+            const buffer=new Uint32Array(1);crypto.getRandomValues(buffer);
+            const card=available[buffer[0]%available.length];crypto.getRandomValues(buffer);
+            const orientation:Orientation=buffer[0]%2===0?'UPRIGHT':'REVERSED';
+            void onClarifier(clarifierPosition,card.id,orientation);
+          }}>✦ Sacar aclaratoria virtual</button>
+        </div>
+        {clarifierMessage&&<div className="notice-card info">{clarifierMessage}</div>}
+      </div>
+    </>}
+
     <div className={`notice-card ${savedId?'success':'warning'}`}>{savedId?`✓ Lectura guardada localmente · ${savedId.slice(0,8)}`:'La interpretación se mostró, pero el navegador no confirmó el guardado local.'}</div>
   </section>;
 }
@@ -132,6 +162,8 @@ export function TarotView() {
   const [presentation,setPresentation]=useState<Presentation>('NORMAL');
   const [busy,setBusy]=useState(false);
   const [interpretError,setInterpretError]=useState('');
+  const [clarifierBusy,setClarifierBusy]=useState(false);
+  const [clarifierMessage,setClarifierMessage]=useState('');
 
   const spread=spreads.find(item=>item.id===spreadId)!;
   const positions=spread.positions;
@@ -142,6 +174,25 @@ export function TarotView() {
   const cardsReady=positions.every(p=>picks[p.id]);
   const drawnCount=positions.filter(p=>picks[p.id]).length;
   const nextPosition=positions[drawnCount];
+
+  useEffect(()=>{
+    const raw=sessionStorage.getItem('oraculo_camera_cards_v1');
+    if(!raw)return;
+    sessionStorage.removeItem('oraculo_camera_cards_v1');
+    try{
+      const entries=JSON.parse(raw) as Pick[];
+      if(!Array.isArray(entries)||!entries.length)return;
+      const preferredByCount:Record<number,string>={1:'SPREAD_ONE_01',3:'SPREAD_FTA_03',5:'SPREAD_DIAG_05',6:'SPREAD_COMM_06',7:'SPREAD_RELATION_07',9:'SPREAD_RELATION_09',10:'SPREAD_CELTIC_10',12:'SPREAD_YEAR_12'};
+      const targetId=preferredByCount[entries.length]??'SPREAD_FTA_03';
+      const targetSpread=spreads.find(item=>item.id===targetId)??spreads.find(item=>item.cardCount===entries.length)??spreads.find(item=>item.id==='SPREAD_FTA_03')!;
+      const next:Record<string,Pick>={};
+      targetSpread.positions.slice(0,entries.length).forEach((position,index)=>{const entry=entries[index];if(entry?.cardId&&entry?.orientation)next[position.id]=entry});
+      setSpreadId(targetSpread.id);setPicks(next);setMethod('PHYSICAL');
+      setInterpretError('');
+    }catch{/* entrada de cámara inválida: se ignora */}
+  // solo se consume una vez al abrir la pantalla desde Cámara
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
 
   function resetDraw() {
     setPicks({});setDeck([]);setCutDone(false);setResult(null);setSavedId(null);setInterpretError('');setBusy(false);
@@ -165,7 +216,7 @@ export function TarotView() {
         spread:{id:spread.id,version:spread.version},
         cards:positions.map(position=>({positionId:position.id,cardId:picks[position.id].cardId,orientation:picks[position.id].orientation})),
         options:{depth:'NORMAL' as const,style:'NORMAL' as const,drawMethod:method,reversalsEnabled:reversals},
-        versions:{content:'1.0.0',engine:'0.5.0'},
+        versions:{content:'1.0.0',engine:'0.6.0'},
       };
       const interpreted=interpretTarot(request);
       setResult(interpreted);
@@ -174,10 +225,23 @@ export function TarotView() {
     finally{setBusy(false);}
   }
 
-  if(result) return <ReadingResult result={result} spreadName={spread.name} savedId={savedId} presentation={presentation} setPresentation={setPresentation} restart={resetDraw}/>;
+  async function addClarifier(positionId:string,cardId:string,orientation:Orientation){
+    if(!savedId||clarifierBusy)return;
+    setClarifierBusy(true);setClarifierMessage('');
+    try{
+      const revised=await addClarifierRevision(savedId,positionId,cardId,orientation);
+      setResult(revised.result);
+      setClarifierMessage('Aclaratoria añadida. La lectura original se conserva como revisión anterior.');
+    }catch(error){
+      const message=error instanceof Error?error.message:String(error);
+      setClarifierMessage(message==='CLARIFIER_LIMIT'?'Esta posición ya alcanzó el máximo de 2 aclaratorias.':message==='CARD_DUPLICATE'?'Esa carta ya está presente en la lectura.':'No se pudo añadir la aclaratoria.');
+    }finally{setClarifierBusy(false)}
+  }
+
+  if(result) return <ReadingResult result={result} spreadName={spread.name} savedId={savedId} presentation={presentation} setPresentation={setPresentation} restart={resetDraw} onClarifier={addClarifier} clarifierBusy={clarifierBusy} clarifierMessage={clarifierMessage}/>;
 
   return <section className="page">
-    <span className="eyebrow">NUEVA LECTURA · ORÁCULO TAROT 0.9</span>
+    <span className="eyebrow">NUEVA LECTURA · ORÁCULO TAROT 1.0 BETA</span>
     <h1>{spread.name}</h1>
     <p className="muted">Saca las cartas y ORÁCULO TAROT mostrará la imagen Rider–Waite y la interpretación contextual. La pregunta es recomendable, pero ya no bloquea la lectura.</p>
 

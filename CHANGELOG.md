@@ -1,5 +1,14 @@
 # ORÁCULO TAROT — CHANGELOG
 
+## 1.0.0-beta.1
+- Primera Beta funcional sobre la base estable 0.9.1.
+- Cámara asistida: reconocimiento local carta por carta, top 5 de candidatos, orientación probable y confirmación manual.
+- Motor narrativo 0.6: puentes entre cartas, síntesis más continua y aclaratorias integradas.
+- Aclaratorias físicas y virtuales sin sobrescribir la lectura original.
+- Catálogo ampliado con 7 nuevas tiradas oficiales, hasta 12 cartas.
+- Entrada desde Cámara a Nueva lectura mediante sesión local, sin enviar fotografías a servicios externos.
+- Mantiene mazo local 78/78 y diagnósticos separados de motor e imágenes.
+
 ## 0.9.1
 - Estabilización definitiva del mazo local: 78 imágenes se descargan en build y quedan dentro de la PWA publicada.
 - `postinstall` prepara y valida las cartas incluso si persiste un workflow anterior.

@@ -1,7 +1,7 @@
-ORÁCULO TAROT 0.9.1
+ORÁCULO TAROT 1.0 BETA
 
 Esta carpeta contiene una copia visible del workflow de GitHub Pages.
 El archivo operativo debe estar en:
 .github/workflows/deploy-pages.yml
 
-En 0.8 las imágenes de las cartas ya no dependen de una descarga durante Actions. Si GitHub conserva por error un workflow anterior que igualmente instala y ejecuta Vite, la capa visual dispone de fallback runtime compatible con Pages.
+La Beta conserva la preparación y validación obligatoria de las 78 imágenes locales y añade la validación del nuevo bloque funcional (cámara asistida, aclaratorias, narrativa 0.6 y catálogo ampliado).

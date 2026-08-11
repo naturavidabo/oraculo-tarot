@@ -82,7 +82,11 @@ function scoreSpread(spread:SpreadDefinition, analysis:QuestionAnalysis) {
     else if(id==='SPREAD_RELATION_07') score=84;
     else if(id==='SPREAD_FTA_03') score=62;
   } else if(analysis.category==='RELATIONSHIP') {
-    if(targets.has('ACTION')||targets.has('INTENTION')) {
+    if(hasAny(analysis.normalized,['relacion completa','panorama completo','todo el vinculo','vinculo completo'])) {
+      if(id==='SPREAD_RELATION_09') score=99;
+      else if(id==='SPREAD_RELATION_07') score=88;
+      else if(id==='SPREAD_FTA_03') score=68;
+    } else if(targets.has('ACTION')||targets.has('INTENTION')) {
       if(id==='SPREAD_RELATION_07') score=97;
       else if(id==='SPREAD_FTA_03') score=82;
       else if(id==='SPREAD_DIAG_05') score=66;
@@ -92,17 +96,32 @@ function scoreSpread(spread:SpreadDefinition, analysis:QuestionAnalysis) {
       else if(id==='SPREAD_QUICK_03') score=58;
     }
   } else if(analysis.category==='EVOLUTION') {
-    if(id==='SPREAD_EVOLUTION_07') score=97;
-    else if(id==='SPREAD_PPT_03') score=88;
-    else if(id==='SPREAD_DIAG_05') score=64;
+    if(hasAny(analysis.normalized,['ano','12 meses','proximo ano','año'])) {
+      if(id==='SPREAD_YEAR_12') score=99;
+      else if(id==='SPREAD_EVOLUTION_07') score=86;
+      else if(id==='SPREAD_PPT_03') score=72;
+    } else {
+      if(id==='SPREAD_EVOLUTION_07') score=97;
+      else if(id==='SPREAD_PPT_03') score=88;
+      else if(id==='SPREAD_DIAG_05') score=64;
+    }
   } else if(analysis.category==='HIDDEN') {
     if(id==='SPREAD_HIDDEN_06') score=97;
     else if(id==='SPREAD_DIAG_05') score=72;
     else if(id==='SPREAD_QUICK_03') score=55;
-  } else if(analysis.category==='WORK'||analysis.category==='MONEY'||analysis.category==='ADVICE') {
-    if(id==='SPREAD_DIAG_05') score=94;
-    else if(id==='SPREAD_QUICK_03') score=78;
-    else if(id==='SPREAD_ONE_01') score=62;
+  } else if(analysis.category==='WORK') {
+    if(id==='SPREAD_WORK_07') score=98;
+    else if(id==='SPREAD_DIAG_05') score=88;
+    else if(id==='SPREAD_CELTIC_10') score=72;
+  } else if(analysis.category==='MONEY') {
+    if(id==='SPREAD_MONEY_07') score=98;
+    else if(id==='SPREAD_DIAG_05') score=87;
+    else if(id==='SPREAD_DECISION_07') score=70;
+  } else if(analysis.category==='ADVICE') {
+    if(id==='SPREAD_DECISION_07' && hasAny(analysis.normalized,['opcion','elegir','entre','camino','decidir'])) score=98;
+    else if(id==='SPREAD_DIAG_05') score=91;
+    else if(id==='SPREAD_YESNO_03') score=82;
+    else if(id==='SPREAD_ONE_01') score=68;
   } else {
     if(id==='SPREAD_QUICK_03') score=90;
     else if(id==='SPREAD_DIAG_05') score=78;
@@ -123,6 +142,13 @@ function reasonFor(spread:SpreadDefinition, analysis:QuestionAnalysis) {
     case 'SPREAD_EVOLUTION_07': return 'Sigue la secuencia desde el estado actual hasta la tendencia final.';
     case 'SPREAD_PPT_03': return 'Resume la evolución en pasado, presente y tendencia.';
     case 'SPREAD_HIDDEN_06': return 'Distingue lo visible de lo desconocido sin convertir hipótesis en hechos.';
+    case 'SPREAD_WORK_07': return 'Separa situación laboral, recursos, obstáculo, entorno, acción, oportunidad y tendencia.';
+    case 'SPREAD_MONEY_07': return 'Distingue estabilidad, fugas, recursos, decisiones y oportunidad material.';
+    case 'SPREAD_DECISION_07': return 'Compara dos caminos y añade un criterio de decisión en lugar de forzar una respuesta binaria.';
+    case 'SPREAD_YESNO_03': return 'Da una respuesta contextual mostrando lo que favorece, lo que frena y la síntesis.';
+    case 'SPREAD_RELATION_09': return 'Amplía el vínculo a nueve posiciones: ambas partes, reciprocidad, deseo, comunicación, bloqueo, acción y tendencia.';
+    case 'SPREAD_CELTIC_10': return 'Ofrece un panorama profundo cuando la pregunta necesita contexto amplio.';
+    case 'SPREAD_YEAR_12': return 'Sigue la secuencia simbólica de los próximos doce meses.';
     case 'SPREAD_DIAG_05': return analysis.category==='WORK'||analysis.category==='MONEY' ? 'Ordena situación, origen, apoyo, obstáculo y tendencia.' : 'Da contexto suficiente sin sobrecargar la consulta.';
     case 'SPREAD_ONE_01': return 'Útil cuando solo se necesita una orientación central.';
     default: return spread.description;

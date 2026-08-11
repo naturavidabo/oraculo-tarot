@@ -41,6 +41,15 @@ jobs:
       - name: Validate Spanish presentation layer
         run: npm run validate:spanish-ui
 
+      - name: Validate Beta 1.0 functional block
+        run: npm run validate:beta
+
+      - name: Prepare 78 local Rider-Waite images
+        run: npm run fetch:cards
+
+      - name: Validate 78 local card assets
+        run: npm run validate:card-assets
+
       - name: Build PWA with Vite
         run: npx vite build
 
