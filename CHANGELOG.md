@@ -1,5 +1,12 @@
 # ORÁCULO TAROT — CHANGELOG
 
+## 1.0.0-beta.2
+- Reconocimiento visual 2.0: bordes + estructura + color + múltiples encuadres.
+- Top 8, confianza no concluyente y ranking completo 1–78.
+- Modo de prueba y métricas locales Top 1 / Top 5.
+- Correcciones de usuario registran el puesto de la carta real sin guardar fotos.
+- Mantiene 78/78 imágenes locales, motor narrativo 0.6, aclaratorias y catálogo ampliado.
+
 ## 1.0.0-beta.1
 - Primera Beta funcional sobre la base estable 0.9.1.
 - Cámara asistida: reconocimiento local carta por carta, top 5 de candidatos, orientación probable y confirmación manual.

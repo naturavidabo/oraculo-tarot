@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { createBackupBlob, downloadBackup, restoreBackupFile } from '../../db/backup';
 import { runEngineSelfTest, type SelfTestResult } from '../../engine/selfTest';
 import { runImageDiagnostic, type ImageDiagnosticResult } from '../../engine/imageDiagnostics';
+import { cameraFeedbackSummary } from '../../engine/cameraRecognition';
 
 export function MoreView(){
   const inputRef=useRef<HTMLInputElement>(null);
@@ -10,6 +11,9 @@ export function MoreView(){
   const [diagnostic,setDiagnostic]=useState<SelfTestResult|null>(null);
   const [imageDiagnostic,setImageDiagnostic]=useState<ImageDiagnosticResult|null>(null);
   const [imageProgress,setImageProgress]=useState('');
+  const [cameraStatsVersion,setCameraStatsVersion]=useState(0);
+  const cameraStats=cameraFeedbackSummary();
+  void cameraStatsVersion;
 
   async function backup(){
     setBusy(true); setMessage('');
@@ -33,7 +37,7 @@ export function MoreView(){
   }
 
   return <section className="page">
-    <span className="eyebrow">MÁS · ORÁCULO TAROT 1.0 BETA</span><h1>Herramientas</h1>
+    <span className="eyebrow">MÁS · ORÁCULO TAROT 1.0 BETA 2</span><h1>Herramientas</h1>
     <div className="feature-card static"><b>Respaldo local</b><span>Exporta lecturas, personas, notas, favoritos, evaluaciones y progreso de aprendizaje.</span></div>
     <div className="backup-actions">
       <button className="primary-cta" disabled={busy} onClick={()=>void backup()}>{busy?'Procesando…':'Crear respaldo'}</button>
@@ -55,8 +59,14 @@ export function MoreView(){
     <button className="secondary-cta" onClick={()=>setDiagnostic(runEngineSelfTest())}>Ejecutar diagnóstico del motor</button>
     {diagnostic&&<div className={`diagnostic-panel ${diagnostic.ok?'ok':'fail'}`}><b>{diagnostic.ok?'✓ Motor interpretativo operativo':'✗ Motor interpretativo con falla'}</b>{diagnostic.checks.map(item=><div key={item.label}><span>{item.ok?'✓':'✗'} {item.label}</span><small>{item.detail}</small></div>)}</div>}
 
-    <div className="section-title"><h2>Funciones Beta 1.0</h2><span>nuevo bloque</span></div>
-    <div className="feature-card static"><b>📷 Reconocimiento asistido</b><span>Compara una carta fotografiada con las 78 imágenes locales y pide confirmación antes de usarla.</span></div>
+    <div className="section-title"><h2>Diagnóstico de cámara</h2><span>Beta 2</span></div>
+    <p className="muted">Cada vez que corriges o pruebas una carta, se guarda únicamente el puesto que obtuvo la carta real. Las fotografías no se guardan.</p>
+    <div className="status-card camera-stats"><div><strong>{cameraStats.samples}</strong><span>pruebas registradas</span></div><div><strong>{cameraStats.samples?Math.round(cameraStats.top1/cameraStats.samples*100):0}%</strong><span>acierto Top 1</span></div><div><strong>{cameraStats.samples?Math.round(cameraStats.top5/cameraStats.samples*100):0}%</strong><span>carta real en Top 5</span></div></div>
+    {!!cameraStats.samples&&<div className="notice-card info">Puesto promedio de la carta real: <b>{cameraStats.avgRank}/78</b>. Esta métrica sirve para comprobar si las siguientes versiones realmente mejoran.</div>}
+    <button className="secondary-cta" onClick={()=>setCameraStatsVersion(x=>x+1)}>Actualizar estadísticas de cámara</button>
+
+    <div className="section-title"><h2>Funciones Beta 2</h2><span>reconocimiento 2.0</span></div>
+    <div className="feature-card static"><b>📷 Reconocimiento multicriterio</b><span>Localiza la carta, prueba pequeñas variaciones de encuadre y compara estructura, bordes y color contra las 78 imágenes locales.</span></div>
     <div className="feature-card static"><b>✦ Aclaratorias</b><span>Añade hasta dos cartas aclaratorias por posición sin borrar la lectura original.</span></div>
     <div className="feature-card static"><b>Catálogo ampliado</b><span>Incluye decisión, trabajo, dinero, relación completa, Cruz Celta y rueda anual.</span></div>
 

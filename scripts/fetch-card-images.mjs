@@ -4,7 +4,7 @@ import path from 'node:path';
 const manifest=JSON.parse(await fs.readFile('src/data/card-images.json','utf8'));
 const outDir='public/cards';
 const RAW_BASE='https://raw.githubusercontent.com/seven102161/elaine-tarot-cards/main/cards';
-const UA='ORACULO-TAROT/1.0-BETA GitHub-Pages-build';
+const UA='ORACULO-TAROT/1.0-BETA2 GitHub-Pages-build';
 await fs.mkdir(outDir,{recursive:true});
 
 function externalCode(cardId){

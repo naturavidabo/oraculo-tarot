@@ -1,6 +1,6 @@
 # ORÁCULO TAROT
 
-**Versión 1.0 Beta — Cámara asistida, narrativa 0.6, aclaratorias y catálogo ampliado**
+**Versión 1.0.0 Beta 2 — Reconocimiento visual 2.0, narrativa 0.6, aclaratorias y catálogo ampliado**
 
 PWA de Tarot Rider–Waite con tiradas físicas/virtuales, interpretación local en español, biblioteca, historial, aprendizaje y funcionamiento offline progresivo.
 
@@ -42,3 +42,14 @@ Durante el build se preparan 78 JPEG dentro de `public/cards`. GitHub Pages publ
 - Aclaratorias físicas o virtuales con revisiones inmutables.
 - Catálogo oficial ampliado: Sí/No contextual, Dos caminos, Trabajo, Dinero, Relación completa, Cruz Celta y Rueda anual.
 - El reconocimiento múltiple de varias cartas en una sola fotografía queda para una fase posterior.
+
+
+## 1.0.0 Beta 2 — reconocimiento visual 2.0
+- Sustituye el comparador 20×32 en gris por una huella visual multicriterio.
+- Detección aproximada de los límites de la carta dentro de la fotografía.
+- Variantes pequeñas de rotación, zoom y desplazamiento para tolerar encuadre imperfecto.
+- Compara estructura, bordes, color regional e histogramas de color.
+- Ranking completo 1–78 y Top 8 visible.
+- Confianza alta/media/baja/no concluyente; evita presentar una coincidencia débil como certeza.
+- Modo de prueba para seleccionar la carta real y medir en qué puesto quedó.
+- Correcciones guardadas solo como estadísticas locales; las fotos no se almacenan.

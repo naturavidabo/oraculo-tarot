@@ -6,12 +6,12 @@ const required=[
   'src/engine/presentationLabels.ts','src/engine/imageDiagnostics.ts','src/engine/selfTest.ts','src/engine/cameraRecognition.ts',
   'src/features/camera/CameraView.tsx','src/features/tarot/TarotView.tsx',
   'scripts/fetch-card-images.mjs','scripts/validate-card-assets.mjs','scripts/validate-pages.mjs','scripts/validate-spanish-ui.mjs',
-  'scripts/validate-beta-features.mjs','scripts/smoke-selector.cjs','scripts/smoke-engine.cjs','scripts/validate-image-manifest.mjs','docs/VALIDATION-1.0-BETA.md'
+  'scripts/validate-beta-features.mjs','scripts/validate-camera-v2.mjs','scripts/smoke-selector.cjs','scripts/smoke-engine.cjs','scripts/validate-image-manifest.mjs','docs/VALIDATION-1.0-BETA2.md'
 ];
 let failed=false;
 for(const file of required){if(!fs.existsSync(file)){failed=true;console.error(`✗ Falta archivo esencial: ${file}`)}}
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
-if(pkg.version!=='1.0.0-beta.1'){failed=true;console.error(`✗ package.json no es 1.0.0-beta.1: ${pkg.version}`)}
+if(pkg.version!=='1.0.0-beta.2'){failed=true;console.error(`✗ package.json no es 1.0.0-beta.2: ${pkg.version}`)}
 for(const marker of ['fetch-card-images.mjs','validate-card-assets.mjs']){if(!pkg.scripts.postinstall?.includes(marker)){failed=true;console.error(`✗ postinstall no contiene ${marker}`)}}
 const home=fs.readFileSync('src/features/home/HomeView.tsx','utf8');if(!home.includes('1.0 Beta')){failed=true;console.error('✗ HomeView no muestra 1.0 Beta')}
 const images=fs.readFileSync('src/data/cardImages.ts','utf8');if(!images.includes('cardImagePath(cardId),cardImageRemotePath')){failed=true;console.error('✗ La ruta local no es la primera fuente visual')}

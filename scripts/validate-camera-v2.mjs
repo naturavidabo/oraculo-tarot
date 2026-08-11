@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+let failed=false;const fail=m=>{failed=true;console.error(`✗ ${m}`)};
+const engine=fs.readFileSync('src/engine/cameraRecognition.ts','utf8');
+for(const marker of ['ANALYSIS_W=48','ANALYSIS_H=80','estimateCardRect','descriptorSimilarity','rgbToHsv','queryDescriptors','confidenceFor','INCONCLUSIVE','recordCameraFeedback','cameraFeedbackSummary','slice(0,8)']) if(!engine.includes(marker)) fail(`Reconocimiento 2.0 incompleto: ${marker}`);
+if(/const W=20;|const H=32;/.test(engine)) fail('Permanece el reconocedor antiguo 20x32');
+const camera=fs.readFileSync('src/features/camera/CameraView.tsx','utf8');
+for(const marker of ['RECONOCIMIENTO VISUAL 2.0','Modo de prueba','puesto','Reconocimiento no concluyente','Top {candidates.length}','Elegir manualmente / corregir reconocimiento']) if(!camera.includes(marker)) fail(`Interfaz de cámara Beta 2 incompleta: ${marker}`);
+const more=fs.readFileSync('src/features/more/MoreView.tsx','utf8');
+for(const marker of ['Diagnóstico de cámara','acierto Top 1','carta real en Top 5','cameraFeedbackSummary']) if(!more.includes(marker)) fail(`Métricas de cámara incompletas: ${marker}`);
+if(!failed) console.log('✓ Reconocimiento visual 2.0 Beta 2 validado');
+if(failed) process.exit(1);
