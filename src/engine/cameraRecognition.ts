@@ -7,6 +7,8 @@ export type CameraOrientationConfidence='HIGH'|'MEDIUM'|'LOW'|'AMBIGUOUS';
 export type CameraPoint={x:number;y:number};
 export type CameraCorners=[CameraPoint,CameraPoint,CameraPoint,CameraPoint];
 export type CameraRecognitionOptions={corners?:CameraCorners};
+export type CameraFramingStatus='GOOD'|'ADJUST'|'MULTIPLE_SUSPECTED';
+export type CameraFramingInspection={status:CameraFramingStatus;quality:number;method:'AUTO_EDGES'|'CENTER_GUIDE';message:string;observedRatio:number};
 export type CameraCandidate={
   cardId:string;
   cardName:string;
@@ -24,6 +26,9 @@ export type CameraRecognitionResult={
   cropMethod:'AUTO_EDGES'|'CENTER_GUIDE'|'MANUAL_CORNERS';
   cropQuality:number;
   framingWarning:boolean;
+  framingStatus:CameraFramingStatus;
+  framingMessage:string;
+  cropHypothesesTested:number;
 };
 export type CameraFeedback={
   id:string;
@@ -92,54 +97,49 @@ function insetCrop(rect:CropRect,factor:number):CropRect{
 
 function luminance(r:number,g:number,b:number){return r*.299+g*.587+b*.114}
 
-function estimateCardRect(img:HTMLImageElement):{rect:CropRect;method:'AUTO_EDGES'|'CENTER_GUIDE';quality:number}{
+function estimateCardRect(img:HTMLImageElement):{rect:CropRect;method:'AUTO_EDGES'|'CENTER_GUIDE';quality:number;status:CameraFramingStatus;message:string;observedRatio:number}{
   const maxW=300,maxH=420;
   const scale=Math.min(maxW/img.width,maxH/img.height,1);
   const w=Math.max(80,Math.round(img.width*scale));
   const h=Math.max(120,Math.round(img.height*scale));
   const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
-  if(!ctx)return {rect:centerCrop(img.width,img.height),method:'CENTER_GUIDE',quality:0};
+  if(!ctx)return {rect:centerCrop(img.width,img.height),method:'CENTER_GUIDE',quality:0,status:'ADJUST',message:'No se pudo evaluar el encuadre. Usa los cuatro bordes visibles.',observedRatio:0};
   ctx.drawImage(img,0,0,w,h);
   const data=ctx.getImageData(0,0,w,h).data;
   const gray=new Float32Array(w*h);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
     const i=(y*w+x)*4;gray[y*w+x]=luminance(data[i],data[i+1],data[i+2]);
   }
-  const gx=new Float32Array(w);
-  const gy=new Float32Array(h);
-  const y0=Math.floor(h*.10),y1=Math.floor(h*.90);
-  const x0=Math.floor(w*.10),x1=Math.floor(w*.90);
-  for(let x=1;x<w-1;x++){
-    let s=0;for(let y=y0;y<y1;y++)s+=Math.abs(gray[y*w+x+1]-gray[y*w+x-1]);
-    gx[x]=s/Math.max(1,y1-y0);
-  }
-  for(let y=1;y<h-1;y++){
-    let s=0;for(let x=x0;x<x1;x++)s+=Math.abs(gray[(y+1)*w+x]-gray[(y-1)*w+x]);
-    gy[y]=s/Math.max(1,x1-x0);
-  }
-  const argMax=(arr:Float32Array,a:number,b:number)=>{
-    let idx=a,best=-Infinity;for(let i=a;i<=b;i++)if(arr[i]>best){best=arr[i];idx=i}return {idx,best};
-  };
-  const left=argMax(gx,Math.floor(w*.03),Math.floor(w*.48));
-  const right=argMax(gx,Math.floor(w*.52),Math.floor(w*.97));
-  const top=argMax(gy,Math.floor(h*.02),Math.floor(h*.48));
-  const bottom=argMax(gy,Math.floor(h*.52),Math.floor(h*.98));
+  const gx=new Float32Array(w),gy=new Float32Array(h);
+  const y0=Math.floor(h*.08),y1=Math.floor(h*.92),x0=Math.floor(w*.08),x1=Math.floor(w*.92);
+  for(let x=1;x<w-1;x++){let sum=0;for(let y=y0;y<y1;y++)sum+=Math.abs(gray[y*w+x+1]-gray[y*w+x-1]);gx[x]=sum/Math.max(1,y1-y0)}
+  for(let y=1;y<h-1;y++){let sum=0;for(let x=x0;x<x1;x++)sum+=Math.abs(gray[(y+1)*w+x]-gray[(y-1)*w+x]);gy[y]=sum/Math.max(1,x1-x0)}
+  const argMax=(arr:Float32Array,a:number,b:number)=>{let idx=a,best=-Infinity;for(let i=a;i<=b;i++)if(arr[i]>best){best=arr[i];idx=i}return {idx,best}};
+  const left=argMax(gx,Math.floor(w*.02),Math.floor(w*.48));
+  const right=argMax(gx,Math.floor(w*.52),Math.floor(w*.98));
+  const top=argMax(gy,Math.floor(h*.015),Math.floor(h*.48));
+  const bottom=argMax(gy,Math.floor(h*.52),Math.floor(h*.985));
   const cw=right.idx-left.idx,ch=bottom.idx-top.idx;
-  const ratio=cw/Math.max(1,ch);
-  const area=(cw*ch)/(w*h);
+  const ratio=cw/Math.max(1,ch),area=(cw*ch)/(w*h);
   const edgeMean=(left.best+right.best+top.best+bottom.best)/4;
   const ratioQuality=1-Math.min(1,Math.abs(ratio-TARGET_RATIO)/TARGET_RATIO);
-  const quality=clamp(Math.round((edgeMean/30)*50 + ratioQuality*32 + Math.min(1,area/.55)*18),0,100);
-  const plausible=cw>w*.25&&ch>h*.40&&ratio>.40&&ratio<.80&&area>.16&&quality>=35;
-  if(!plausible)return {rect:centerCrop(img.width,img.height),method:'CENTER_GUIDE',quality};
-  const inv=1/scale;
-  const padX=cw*.018,padY=ch*.018;
-  const sx=clamp((left.idx-padX)*inv,0,img.width-1);
-  const sy=clamp((top.idx-padY)*inv,0,img.height-1);
-  const sw=clamp((cw+padX*2)*inv,1,img.width-sx);
-  const sh=clamp((ch+padY*2)*inv,1,img.height-sy);
-  return {rect:{sx,sy,sw,sh},method:'AUTO_EDGES',quality};
+  const quality=clamp(Math.round((edgeMean/30)*48 + ratioQuality*34 + Math.min(1,area/.55)*18),0,100);
+  const plausible=cw>w*.24&&ch>h*.38&&ratio>.41&&ratio<.77&&area>.15&&quality>=38;
+  const multipleLike=!plausible&&quality>=55&&(ratio>.84||ratio<.34)&&area>.20;
+  if(!plausible){
+    return {rect:centerCrop(img.width,img.height),method:'CENTER_GUIDE',quality,status:multipleLike?'MULTIPLE_SUSPECTED':'ADJUST',message:multipleLike?'El encuadre parece contener más de una carta o una figura demasiado ancha/alta. Fotografía una sola carta o encierra una con 4 esquinas.':'No se aislaron los cuatro bordes con suficiente claridad. Acerca y centra la carta o usa 4 esquinas.',observedRatio:ratio};
+  }
+  const inv=1/scale,padX=cw*.018,padY=ch*.018;
+  const sx=clamp((left.idx-padX)*inv,0,img.width-1),sy=clamp((top.idx-padY)*inv,0,img.height-1);
+  const sw=clamp((cw+padX*2)*inv,1,img.width-sx),sh=clamp((ch+padY*2)*inv,1,img.height-sy);
+  return {rect:{sx,sy,sw,sh},method:'AUTO_EDGES',quality,status:quality>=58?'GOOD':'ADJUST',message:quality>=58?'Encuadre apto: se localizaron bordes compatibles con una carta.':'Se detectó una carta, pero el encuadre puede mejorarse.',observedRatio:ratio};
+}
+
+export async function inspectTarotPhoto(file:File):Promise<CameraFramingInspection>{
+  const photo=await loadImage(file);
+  const crop=estimateCardRect(photo);
+  return {status:crop.status,quality:crop.quality,method:crop.method,message:crop.message,observedRatio:Math.round(crop.observedRatio*100)/100};
 }
 
 function renderNormalized(img:HTMLImageElement,rect:CropRect,rotationDeg=0,zoom=1,dx=0,dy=0){
@@ -319,23 +319,48 @@ function descriptorOrientations(images:ImageData[]):QueryOrientations{
 }
 
 function rectQueryImages(img:HTMLImageElement,rect:CropRect){
+  // Pocas variantes dentro de UN mismo encuadre. Beta 5 evita que cada carta
+  // escoja un recorte diferente, que era una fuente de falsos positivos.
   const variants=[
     {r:0,z:1,dx:0,dy:0},
     {r:-3,z:1.02,dx:0,dy:0},{r:3,z:1.02,dx:0,dy:0},
-    {r:-6,z:1.04,dx:0,dy:0},{r:6,z:1.04,dx:0,dy:0},
-    {r:0,z:1.04,dx:-.02,dy:0},{r:0,z:1.04,dx:.02,dy:0},
-    {r:0,z:1.04,dx:0,dy:-.018},{r:0,z:1.04,dx:0,dy:.018},
+    {r:0,z:1.025,dx:-.012,dy:0},{r:0,z:1.025,dx:.012,dy:0},
   ];
   return variants.map(v=>renderNormalized(img,rect,v.r,v.z,v.dx,v.dy));
 }
 
-function queryDescriptors(img:HTMLImageElement,cropRect:CropRect,manualCorners?:CameraCorners):QueryOrientations{
-  if(manualCorners)return descriptorOrientations([renderManualCorners(img,manualCorners)]);
+type CropHypothesis={rect?:CropRect;corners?:CameraCorners;label:string;method:'AUTO_EDGES'|'CENTER_GUIDE'|'MANUAL_CORNERS';quality:number};
+function boundedRect(rect:CropRect,img:HTMLImageElement):CropRect{
+  const sx=clamp(rect.sx,0,img.width-1),sy=clamp(rect.sy,0,img.height-1);
+  return {sx,sy,sw:clamp(rect.sw,1,img.width-sx),sh:clamp(rect.sh,1,img.height-sy)};
+}
+function scaleRect(rect:CropRect,factor:number,img:HTMLImageElement):CropRect{
+  const cx=rect.sx+rect.sw/2,cy=rect.sy+rect.sh/2,sw=rect.sw*factor,sh=rect.sh*factor;
+  return boundedRect({sx:cx-sw/2,sy:cy-sh/2,sw,sh},img);
+}
+function buildCropHypotheses(img:HTMLImageElement,crop:ReturnType<typeof estimateCardRect>,corners?:CameraCorners):CropHypothesis[]{
+  if(corners)return [{corners,label:'4 esquinas',method:'MANUAL_CORNERS',quality:100}];
   const center=centerCrop(img.width,img.height);
-  const rects=[cropRect,center,insetCrop(center,.025)];
-  const unique:CropRect[]=[];
-  for(const r of rects){if(!unique.some(u=>Math.abs(u.sx-r.sx)<2&&Math.abs(u.sy-r.sy)<2&&Math.abs(u.sw-r.sw)<2&&Math.abs(u.sh-r.sh)<2))unique.push(r)}
-  return descriptorOrientations(unique.flatMap(r=>rectQueryImages(img,r)));
+  const rows:CropHypothesis[]=[];
+  if(crop.method==='AUTO_EDGES'){
+    rows.push({rect:crop.rect,label:'bordes detectados',method:'AUTO_EDGES',quality:crop.quality});
+    rows.push({rect:scaleRect(crop.rect,.96,img),label:'bordes -4%',method:'AUTO_EDGES',quality:Math.max(0,crop.quality-2)});
+    rows.push({rect:scaleRect(crop.rect,1.045,img),label:'bordes +4.5%',method:'AUTO_EDGES',quality:Math.max(0,crop.quality-3)});
+  }
+  rows.push({rect:center,label:'guía central',method:'CENTER_GUIDE',quality:Math.min(crop.quality,72)});
+  rows.push({rect:insetCrop(center,.025),label:'guía central ajustada',method:'CENTER_GUIDE',quality:Math.min(crop.quality,68)});
+  const unique:CropHypothesis[]=[];
+  for(const row of rows){
+    if(row.corners){unique.push(row);continue}
+    const r=row.rect!;
+    if(!unique.some(x=>x.rect&&Math.abs(x.rect.sx-r.sx)<2&&Math.abs(x.rect.sy-r.sy)<2&&Math.abs(x.rect.sw-r.sw)<2&&Math.abs(x.rect.sh-r.sh)<2))unique.push(row);
+  }
+  return unique.slice(0,5);
+}
+
+function queryForHypothesis(img:HTMLImageElement,h:CropHypothesis):QueryOrientations{
+  if(h.corners)return descriptorOrientations([renderManualCorners(img,h.corners)]);
+  return descriptorOrientations(rectQueryImages(img,h.rect!));
 }
 
 function orientationConfidenceFor(best:number,other:number):CameraOrientationConfidence{
@@ -348,58 +373,70 @@ function orientationConfidenceFor(best:number,other:number):CameraOrientationCon
 
 function confidenceFor(best:number,second:number):CameraConfidence{
   const margin=best-second;
-  if(best>=.84&&margin>=.04)return 'HIGH';
-  if(best>=.76&&margin>=.025)return 'MEDIUM';
-  if(best>=.66&&margin>=.012)return 'LOW';
+  if(best>=.82&&margin>=.032)return 'HIGH';
+  if(best>=.74&&margin>=.018)return 'MEDIUM';
+  if(best>=.64&&margin>=.009)return 'LOW';
   return 'INCONCLUSIVE';
+}
+
+type RawCandidate=Omit<CameraCandidate,'rank'>&{raw:number};
+type HypothesisEvaluation={hypothesis:CropHypothesis;sorted:RawCandidate[];best:number;second:number;evidence:number};
+
+async function evaluateHypothesis(h:CropHypothesis,queries:QueryOrientations,onCard?:()=>void):Promise<HypothesisEvaluation>{
+  const rows:RawCandidate[]=[];
+  // Se procesa el mazo completo con el MISMO encuadre. La elección del encuadre
+  // ocurre entre rankings completos, no carta por carta.
+  for(const card of tarotCards){
+    try{
+      const ref=await referenceDescriptor(card.id);
+      let uprightMatch=0,reversedMatch=0;
+      for(const q of queries.original)uprightMatch=Math.max(uprightMatch,descriptorSimilarity(q,ref));
+      for(const q of queries.rotated)reversedMatch=Math.max(reversedMatch,descriptorSimilarity(q,ref));
+      const raw=Math.max(uprightMatch,reversedMatch);
+      const orientation:Orientation=reversedMatch>uprightMatch?'REVERSED':'UPRIGHT';
+      const orientationMargin=Math.round(Math.abs(uprightMatch-reversedMatch)*1000)/10;
+      const orientationConfidence=orientationConfidenceFor(Math.max(uprightMatch,reversedMatch),Math.min(uprightMatch,reversedMatch));
+      const score=Math.round(clamp((raw-.44)/.48*100,0,99));
+      rows.push({cardId:card.id,cardName:card.name,orientation,orientationConfidence,orientationMargin,score,raw});
+    }catch{/* validación 78/78 independiente */}
+    onCard?.();
+  }
+  const sorted=rows.sort((a,b)=>b.raw-a.raw),best=sorted[0]?.raw??0,second=sorted[1]?.raw??0;
+  const margin=Math.max(0,best-second);
+  // Evidencia global: calidad absoluta + separación + pequeña preferencia por bordes reales.
+  const evidence=best + margin*1.45 + (h.method==='AUTO_EDGES'?Math.min(.018,h.quality/100*0.018):0);
+  return {hypothesis:h,sorted,best,second,evidence};
 }
 
 export async function recognizeTarotCard(file:File,onProgress?:(done:number,total:number)=>void,options:CameraRecognitionOptions={}):Promise<CameraRecognitionResult>{
   const photo=await loadImage(file);
   const crop=estimateCardRect(photo);
-  const queries=queryDescriptors(photo,crop.rect,options.corners);
-  const results:Array<Omit<CameraCandidate,'rank'>&{raw:number}>=[];
-  let done=0;
-  const queue=[...tarotCards];
-  const worker=async()=>{
-    while(queue.length){
-      const card=queue.shift();if(!card)break;
-      try{
-        const ref=await referenceDescriptor(card.id);
-        // Identidad y orientación se calculan por separado:
-        // la foto original y una copia físicamente rotada 180° se comparan
-        // únicamente contra la referencia derecha de cada carta.
-        let uprightMatch=0,reversedMatch=0;
-        for(const q of queries.original)uprightMatch=Math.max(uprightMatch,descriptorSimilarity(q,ref));
-        for(const q of queries.rotated)reversedMatch=Math.max(reversedMatch,descriptorSimilarity(q,ref));
-        const raw=Math.max(uprightMatch,reversedMatch);
-        const orientation:Orientation=reversedMatch>uprightMatch?'REVERSED':'UPRIGHT';
-        const orientationMargin=Math.round(Math.abs(uprightMatch-reversedMatch)*1000)/10;
-        const orientationConfidence=orientationConfidenceFor(Math.max(uprightMatch,reversedMatch),Math.min(uprightMatch,reversedMatch));
-        const score=Math.round(clamp((raw-.44)/.48*100,0,99));
-        results.push({cardId:card.id,cardName:card.name,orientation,orientationConfidence,orientationMargin,score,raw});
-      }catch{/* referencia ausente: la validación 78/78 la detecta por separado */}
-      done++;onProgress?.(done,tarotCards.length);
-    }
-  };
-  await Promise.all(Array.from({length:4},()=>worker()));
-  const sorted=results.sort((a,b)=>b.raw-a.raw);
+  const hypotheses=buildCropHypotheses(photo,crop,options.corners);
+  let done=0;const total=tarotCards.length*hypotheses.length;
+  const evaluations:HypothesisEvaluation[]=[];
+  for(const hypothesis of hypotheses){
+    const q=queryForHypothesis(photo,hypothesis);
+    evaluations.push(await evaluateHypothesis(hypothesis,q,()=>{done++;onProgress?.(done,total)}));
+  }
+  evaluations.sort((a,b)=>b.evidence-a.evidence);
+  const chosen=evaluations[0];
+  const sorted=chosen?.sorted??[];
   const all:CameraCandidate[]=sorted.map((x,index)=>({
     cardId:x.cardId,cardName:x.cardName,orientation:x.orientation,
     orientationConfidence:x.orientationConfidence,orientationMargin:x.orientationMargin,
     score:x.score,rank:index+1
   }));
-  const best=sorted[0]?.raw??0,second=sorted[1]?.raw??0;
+  const best=chosen?.best??0,second=chosen?.second??0;
   const confidence=confidenceFor(best,second);
-  const framingWarning=!options.corners&&crop.method==='CENTER_GUIDE'&&crop.quality<38&&confidence==='INCONCLUSIVE';
+  const framingStatus:CameraFramingStatus=options.corners?'GOOD':crop.status;
+  const framingMessage=options.corners?'Encuadre corregido manualmente con cuatro esquinas.':crop.message;
+  const framingWarning=framingStatus!=='GOOD';
   return {
-    candidates:all.slice(0,12),
-    all,
-    confidence,
+    candidates:all.slice(0,12),all,confidence,
     margin:Math.round(Math.max(0,best-second)*1000)/10,
-    cropMethod:options.corners?'MANUAL_CORNERS':crop.method,
-    cropQuality:options.corners?100:crop.quality,
-    framingWarning,
+    cropMethod:options.corners?'MANUAL_CORNERS':chosen?.hypothesis.method??crop.method,
+    cropQuality:options.corners?100:Math.max(crop.quality,chosen?.hypothesis.quality??0),
+    framingWarning,framingStatus,framingMessage,cropHypothesesTested:hypotheses.length,
   };
 }
 

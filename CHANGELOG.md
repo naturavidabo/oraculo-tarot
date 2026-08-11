@@ -1,5 +1,14 @@
 # ORÁCULO TAROT — CHANGELOG
 
+## 1.0.0-beta.5
+- Autoencuadre 3.5 con inspección previa de la foto.
+- Ranking por encuadre global: un único recorte ganador para comparar las 78 cartas.
+- Varios recortes candidatos sin permitir que cada carta elija su propio encuadre.
+- Advertencia y bloqueo temprano cuando la escena parece contener más de una carta.
+- Orientación 3.0 y editor de 4 esquinas de Beta 4 conservados.
+- Interfaz de cámara más intuitiva con calidad previa de encuadre.
+
+
 ## 1.0.0-beta.4
 - Reconstruye orientación como etapa separada de la identificación de carta.
 - La foto original y una copia rotada físicamente 180° se comparan contra una única referencia derecha.

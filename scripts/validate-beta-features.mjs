@@ -12,5 +12,5 @@ for(const marker of ['Carta aclaratoria','addClarifierRevision','Sacar aclarator
 const engine=fs.readFileSync('src/engine/tarotEngine.ts','utf8');
 for(const marker of ['bridgeNarrative','clarifierNarrative','engine:\'0.6.0\'']) if(!engine.includes(marker) && marker!="engine:'0.6.0'") fail(`Motor narrativo 0.6 incompleto: ${marker}`);
 if(!engine.includes('bridgeNarrative')||!engine.includes('clarifierText')) fail('Narrativa no integra puentes/aclaratorias');
-if(!failed) console.log('✓ Bloque funcional ORÁCULO TAROT 1.0 Beta 4 validado');
+if(!failed) console.log('✓ Bloque funcional ORÁCULO TAROT 1.0 Beta 5 validado');
 if(failed) process.exit(1);

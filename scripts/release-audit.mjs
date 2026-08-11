@@ -6,15 +6,15 @@ const required=[
   'src/engine/presentationLabels.ts','src/engine/imageDiagnostics.ts','src/engine/selfTest.ts','src/engine/cameraRecognition.ts',
   'src/features/camera/CameraView.tsx','src/features/tarot/TarotView.tsx',
   'scripts/fetch-card-images.mjs','scripts/validate-card-assets.mjs','scripts/validate-pages.mjs','scripts/validate-spanish-ui.mjs',
-  'scripts/validate-beta-features.mjs','scripts/validate-camera-v4.mjs','scripts/smoke-selector.cjs','scripts/smoke-engine.cjs','scripts/validate-image-manifest.mjs','docs/VALIDATION-1.0-BETA4.md'
+  'scripts/validate-beta-features.mjs','scripts/validate-camera-v4.mjs','scripts/validate-camera-v5.mjs','scripts/smoke-selector.cjs','scripts/smoke-engine.cjs','scripts/validate-image-manifest.mjs','docs/VALIDATION-1.0-BETA4.md','docs/VALIDATION-1.0-BETA5.md'
 ];
 let failed=false;
 for(const file of required){if(!fs.existsSync(file)){failed=true;console.error(`✗ Falta archivo esencial: ${file}`)}}
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
-if(pkg.version!=='1.0.0-beta.4'){failed=true;console.error(`✗ package.json no es 1.0.0-beta.4: ${pkg.version}`)}
+if(pkg.version!=='1.0.0-beta.5'){failed=true;console.error(`✗ package.json no es 1.0.0-beta.5: ${pkg.version}`)}
 for(const marker of ['fetch-card-images.mjs','validate-card-assets.mjs']){if(!pkg.scripts.postinstall?.includes(marker)){failed=true;console.error(`✗ postinstall no contiene ${marker}`)}}
 const home=fs.readFileSync('src/features/home/HomeView.tsx','utf8');if(!home.includes('1.0 Beta')){failed=true;console.error('✗ HomeView no muestra 1.0 Beta')}
-const backup=fs.readFileSync('src/db/backup.ts','utf8');if(!backup.includes("appVersion:'1.0.0-beta.4'")){failed=true;console.error('✗ Backup no registra 1.0.0-beta.4')}
+const backup=fs.readFileSync('src/db/backup.ts','utf8');if(!backup.includes("appVersion:'1.0.0-beta.5'")){failed=true;console.error('✗ Backup no registra 1.0.0-beta.5')}
 const images=fs.readFileSync('src/data/cardImages.ts','utf8');if(!images.includes('cardImagePath(cardId),cardImageRemotePath')){failed=true;console.error('✗ La ruta local no es la primera fuente visual')}
 const diagnostic=fs.readFileSync('src/engine/imageDiagnostics.ts','utf8');if(diagnostic.includes('cardImageCandidates')){failed=true;console.error('✗ Diagnóstico visual todavía acepta fuentes externas')}
 const selftest=fs.readFileSync('src/engine/selfTest.ts','utf8');if(/cardImage|imagen de respaldo/.test(selftest)){failed=true;console.error('✗ Diagnóstico del motor todavía mezcla imágenes')}

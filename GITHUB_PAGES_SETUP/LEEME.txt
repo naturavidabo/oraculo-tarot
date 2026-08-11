@@ -4,4 +4,4 @@ Esta carpeta contiene una copia visible del workflow de GitHub Pages.
 El archivo operativo debe estar en:
 .github/workflows/deploy-pages.yml
 
-La Beta conserva la preparación/validación obligatoria de las 78 imágenes locales y añade validación del bloque Beta 4: orientación 3.0, protección táctil del editor de cuatro esquinas y diagnóstico de orientación independiente.
+La Beta conserva la preparación/validación obligatoria de las 78 imágenes locales y añade validación del bloque Beta 5: orientación 3.0, protección táctil del editor de cuatro esquinas y diagnóstico de orientación independiente.

@@ -84,3 +84,8 @@ body{background:radial-gradient(circle at 18% -8%,rgba(80,45,122,.38) 0,transpar
 .camera-orientation-note.medium{color:#efd994}
 .camera-orientation-note.low,.camera-orientation-note.ambiguous{color:#e9b8a7}
 .camera-orientation-stats{margin:10px 0 14px}
+
+/* Beta 5 · preflight de cámara */
+.camera-preflight{display:grid;gap:5px;margin:10px 0 12px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:rgba(12,26,42,.72)}
+.camera-preflight b{color:var(--gold2)}.camera-preflight span,.camera-preflight small{color:var(--muted);line-height:1.4}
+.camera-preflight.good{border-color:rgba(113,211,156,.38)}.camera-preflight.adjust{border-color:rgba(239,217,148,.32)}.camera-preflight.multiple_suspected{border-color:rgba(236,133,121,.48)}
