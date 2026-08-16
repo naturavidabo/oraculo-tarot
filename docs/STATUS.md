@@ -1,6 +1,6 @@
 # Estado de ORÁCULO TAROT
 
-## Versión de trabajo: 1.0.0 Beta 6
+## Versión de trabajo: 1.0.0 Beta 6.2
 
 Estado: **Tarot estable + cámara individual en afinación avanzada**.
 
@@ -11,7 +11,7 @@ Estado: **Tarot estable + cámara individual en afinación avanzada**.
 - Motor narrativo 0.6 en español.
 - Selección manual y confirmación táctil operativas.
 
-### Cámara Beta 6
+### Cámara Beta 6.2
 - Reconocimiento de una carta por fotografía.
 - Comparación visual 2.5/3.0 con estructura, bordes, color, HOG y varios recortes.
 - Ajuste preciso de cuatro esquinas.

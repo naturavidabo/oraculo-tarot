@@ -135,10 +135,12 @@ function quickRegionCardLikelihood(gray:Float32Array,w:number,h:number,rx0:numbe
 }
 
 function multipleCardEvidence(gray:Float32Array,w:number,h:number){
-  const left=quickRegionCardLikelihood(gray,w,h,0,.03,.62,.97);
-  const right=quickRegionCardLikelihood(gray,w,h,.38,.03,1,.97);
-  const top=quickRegionCardLikelihood(gray,w,h,.03,0,.97,.62);
-  const bottom=quickRegionCardLikelihood(gray,w,h,.03,.38,.97,1);
+  // Beta 6.1: regiones casi disjuntas. En Beta 6 las ventanas se solapaban
+  // demasiado y una sola carta centrada podía aparecer a la vez en ambos lados.
+  const left=quickRegionCardLikelihood(gray,w,h,.01,.04,.49,.96);
+  const right=quickRegionCardLikelihood(gray,w,h,.51,.04,.99,.96);
+  const top=quickRegionCardLikelihood(gray,w,h,.04,.01,.96,.49);
+  const bottom=quickRegionCardLikelihood(gray,w,h,.04,.51,.96,.99);
   const horizontal=left.plausible&&right.plausible?Math.min(left.quality,right.quality):0;
   const vertical=top.plausible&&bottom.plausible?Math.min(top.quality,bottom.quality):0;
   return Math.max(horizontal,vertical);
@@ -174,7 +176,11 @@ function estimateCardRect(img:HTMLImageElement):{rect:CropRect;method:'AUTO_EDGE
   const ratioQuality=1-Math.min(1,Math.abs(ratio-TARGET_RATIO)/TARGET_RATIO);
   const quality=clamp(Math.round((edgeMean/30)*48 + ratioQuality*34 + Math.min(1,area/.55)*18),0,100);
   const plausible=cw>w*.24&&ch>h*.38&&ratio>.41&&ratio<.77&&area>.15&&quality>=38;
-  const multipleLike=multipleEvidence>=48||(!plausible&&quality>=55&&(ratio>.84||ratio<.34)&&area>.20);
+  // Beta 6.1: el bloqueo multicarta es deliberadamente conservador.
+  // Una evidencia parcial ya no basta: debe existir separación espacial fuerte y,
+  // salvo evidencia extrema, una geometría global incompatible con una sola carta.
+  const incompatibleGeometry=!plausible&&(ratio>.82||ratio<.35)&&area>.20;
+  const multipleLike=(multipleEvidence>=64&&incompatibleGeometry)||(multipleEvidence>=82);
   if(multipleLike){
     return {rect:centerCrop(img.width,img.height),method:'CENTER_GUIDE',quality:Math.max(quality,multipleEvidence),status:'MULTIPLE_SUSPECTED',message:'Se detectan dos zonas con forma de carta o un encuadre incompatible con una sola carta. En este modo usa una sola carta o encierra una con 4 esquinas.',observedRatio:ratio,multipleEvidence};
   }
@@ -342,15 +348,52 @@ function l1Similarity(a:Float32Array,b:Float32Array,scale=1){
   let d=0;for(let i=0;i<a.length;i++)d+=Math.abs(a[i]-b[i]);d/=a.length;
   return clamp(1-d/scale,0,1);
 }
+function cosineGridInner(a:Float32Array,b:Float32Array,w:number,h:number,borderX:number,borderY:number){
+  let dot=0,aa=0,bb=0;
+  const x0=Math.max(0,borderX),x1=Math.max(x0+1,w-borderX);
+  const y0=Math.max(0,borderY),y1=Math.max(y0+1,h-borderY);
+  for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
+    const i=y*w+x;dot+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i];
+  }
+  if(!aa||!bb)return 0;return clamp((dot/Math.sqrt(aa*bb)+1)/2,0,1);
+}
+function cosineGridShifted(a:Float32Array,b:Float32Array,w:number,h:number,maxShift:number,borderX:number,borderY:number){
+  // Beta 6.2: similitud tolerante a traslación. Una carta ligeramente corrida o
+  // rectificada de forma imperfecta no debe perder su identidad porque los
+  // símbolos caigan una o dos celdas fuera de su posición de referencia.
+  let best=0;
+  for(let dy=-maxShift;dy<=maxShift;dy++)for(let dx=-maxShift;dx<=maxShift;dx++){
+    let dot=0,aa=0,bb=0;
+    const x0=Math.max(borderX,borderX-dx),x1=Math.min(w-borderX,w-borderX-dx);
+    const y0=Math.max(borderY,borderY-dy),y1=Math.min(h-borderY,h-borderY-dy);
+    for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
+      const ia=y*w+x,ib=(y+dy)*w+(x+dx);
+      dot+=a[ia]*b[ib];aa+=a[ia]*a[ia];bb+=b[ib]*b[ib];
+    }
+    if(aa&&bb)best=Math.max(best,clamp((dot/Math.sqrt(aa*bb)+1)/2,0,1));
+  }
+  return best;
+}
 function descriptorSimilarity(a:Descriptor,b:Descriptor){
-  const fine=cosine(a.fineGray,b.fineGray);
-  const structure=cosine(a.gray,b.gray);
-  const edges=cosine(a.edges,b.edges);
+  // Beta 6.2: comparación híbrida y tolerante a descuadre. La identidad visual
+  // interna pesa más que la coincidencia exacta del marco exterior.
+  const fineFull=cosine(a.fineGray,b.fineGray);
+  const fineInner=cosineGridInner(a.fineGray,b.fineGray,FINE_W,FINE_H,4,5);
+  const fineShift=cosineGridShifted(a.fineGray,b.fineGray,FINE_W,FINE_H,2,4,5);
+  const fine=fineShift*.52+fineInner*.34+fineFull*.14;
+  const structureFull=cosine(a.gray,b.gray);
+  const structureInner=cosineGridInner(a.gray,b.gray,GRID_W,GRID_H,2,3);
+  const structureShift=cosineGridShifted(a.gray,b.gray,GRID_W,GRID_H,1,2,3);
+  const structure=structureShift*.50+structureInner*.34+structureFull*.16;
+  const edgesFull=cosine(a.edges,b.edges);
+  const edgesInner=cosineGridInner(a.edges,b.edges,EDGE_W,EDGE_H,2,3);
+  const edgesShift=cosineGridShifted(a.edges,b.edges,EDGE_W,EDGE_H,1,2,3);
+  const edges=edgesShift*.48+edgesInner*.34+edgesFull*.18;
   const hog=cosine(a.hog,b.hog);
-  const chroma=l1Similarity(a.chroma,b.chroma,.23);
-  const color=l1Similarity(a.rgb,b.rgb,.60);
-  const hist=l1Similarity(a.hist,b.hist,.075);
-  return fine*.24+edges*.20+hog*.16+structure*.13+chroma*.17+color*.07+hist*.03;
+  const chroma=l1Similarity(a.chroma,b.chroma,.28);
+  const color=l1Similarity(a.rgb,b.rgb,.68);
+  const hist=l1Similarity(a.hist,b.hist,.10);
+  return fine*.23+edges*.20+hog*.14+structure*.19+chroma*.14+color*.06+hist*.04;
 }
 
 async function referenceDescriptor(cardId:string){
@@ -388,8 +431,11 @@ function rectQueryImages(img:HTMLImageElement,rect:CropRect){
   // escoja un recorte diferente, que era una fuente de falsos positivos.
   const variants=[
     {r:0,z:1,dx:0,dy:0},
-    {r:-3,z:1.02,dx:0,dy:0},{r:3,z:1.02,dx:0,dy:0},
-    {r:0,z:1.025,dx:-.012,dy:0},{r:0,z:1.025,dx:.012,dy:0},
+    {r:-6,z:1.025,dx:0,dy:0},{r:6,z:1.025,dx:0,dy:0},
+    {r:-3,z:.965,dx:0,dy:0},{r:3,z:.965,dx:0,dy:0},
+    {r:0,z:1.075,dx:-.045,dy:0},{r:0,z:1.075,dx:.045,dy:0},
+    {r:0,z:1.06,dx:0,dy:-.035},{r:0,z:1.06,dx:0,dy:.035},
+    {r:0,z:.93,dx:0,dy:0},{r:0,z:1.12,dx:0,dy:0},
   ];
   return variants.map(v=>renderNormalized(img,rect,v.r,v.z,v.dx,v.dy));
 }
@@ -403,24 +449,34 @@ function scaleRect(rect:CropRect,factor:number,img:HTMLImageElement):CropRect{
   const cx=rect.sx+rect.sw/2,cy=rect.sy+rect.sh/2,sw=rect.sw*factor,sh=rect.sh*factor;
   return boundedRect({sx:cx-sw/2,sy:cy-sh/2,sw,sh},img);
 }
+function shiftRect(rect:CropRect,dx:number,dy:number,img:HTMLImageElement):CropRect{
+  return boundedRect({sx:rect.sx+rect.sw*dx,sy:rect.sy+rect.sh*dy,sw:rect.sw,sh:rect.sh},img);
+}
 function buildCropHypotheses(img:HTMLImageElement,crop:ReturnType<typeof estimateCardRect>,corners?:CameraCorners):CropHypothesis[]{
   if(corners)return [{corners,label:'4 esquinas',method:'MANUAL_CORNERS',quality:100}];
   const center=centerCrop(img.width,img.height);
   const rows:CropHypothesis[]=[];
   if(crop.method==='AUTO_EDGES'){
     rows.push({rect:crop.rect,label:'bordes detectados',method:'AUTO_EDGES',quality:crop.quality});
-    rows.push({rect:scaleRect(crop.rect,.96,img),label:'bordes -4%',method:'AUTO_EDGES',quality:Math.max(0,crop.quality-2)});
-    rows.push({rect:scaleRect(crop.rect,1.045,img),label:'bordes +4.5%',method:'AUTO_EDGES',quality:Math.max(0,crop.quality-3)});
+    rows.push({rect:scaleRect(crop.rect,.90,img),label:'bordes -10%',method:'AUTO_EDGES',quality:Math.max(0,crop.quality-2)});
+    rows.push({rect:scaleRect(crop.rect,1.11,img),label:'bordes +11%',method:'AUTO_EDGES',quality:Math.max(0,crop.quality-3)});
   }
   rows.push({rect:center,label:'guía central',method:'CENTER_GUIDE',quality:Math.min(crop.quality,72)});
-  rows.push({rect:insetCrop(center,.025),label:'guía central ajustada',method:'CENTER_GUIDE',quality:Math.min(crop.quality,68)});
+  rows.push({rect:insetCrop(center,.075),label:'guía central cerrada',method:'CENTER_GUIDE',quality:Math.min(crop.quality,69)});
+  rows.push({rect:scaleRect(center,1.10,img),label:'guía central amplia',method:'CENTER_GUIDE',quality:Math.min(crop.quality,67)});
+  // Hipótesis de rescate para una sola carta algo corrida del centro. No alteran
+  // la imagen original ni sustituyen el ajuste manual de cuatro esquinas.
+  rows.push({rect:shiftRect(center,-.10,0,img),label:'guía desplazada izquierda',method:'CENTER_GUIDE',quality:Math.min(crop.quality,66)});
+  rows.push({rect:shiftRect(center,.10,0,img),label:'guía desplazada derecha',method:'CENTER_GUIDE',quality:Math.min(crop.quality,66)});
+  rows.push({rect:shiftRect(scaleRect(center,.92,img),0,-.035,img),label:'guía ajustada superior',method:'CENTER_GUIDE',quality:Math.min(crop.quality,64)});
+  rows.push({rect:shiftRect(scaleRect(center,.92,img),0,.035,img),label:'guía ajustada inferior',method:'CENTER_GUIDE',quality:Math.min(crop.quality,64)});
   const unique:CropHypothesis[]=[];
   for(const row of rows){
     if(row.corners){unique.push(row);continue}
     const r=row.rect!;
     if(!unique.some(x=>x.rect&&Math.abs(x.rect.sx-r.sx)<2&&Math.abs(x.rect.sy-r.sy)<2&&Math.abs(x.rect.sw-r.sw)<2&&Math.abs(x.rect.sh-r.sh)<2))unique.push(row);
   }
-  return unique.slice(0,5);
+  return unique.slice(0,9);
 }
 
 function queryForHypothesis(img:HTMLImageElement,h:CropHypothesis):QueryOrientations{
@@ -466,7 +522,7 @@ async function evaluateHypothesis(h:CropHypothesis,queries:QueryOrientations,onC
         const ordered=[...scores].sort((a,b)=>b-a);
         if(ordered.length===1)return ordered[0];
         const top=ordered[0],second=ordered[1],third=ordered[2]??second;
-        return top*.55+second*.30+third*.15;
+        return top*.46+second*.34+third*.20;
       };
       const uprightScores=queries.original.map(q=>descriptorSimilarity(q,ref));
       const reversedScores=queries.rotated.map(q=>descriptorSimilarity(q,ref));

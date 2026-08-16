@@ -1,7 +1,7 @@
 {
   "name": "oraculo-tarot-pwa",
   "private": true,
-  "version": "1.0.0-beta.6",
+  "version": "1.0.0-beta.6.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -23,7 +23,7 @@
     "validate:spanish-ui": "node scripts/validate-spanish-ui.mjs",
     "postinstall": "node scripts/fetch-card-images.mjs && node scripts/validate-card-assets.mjs",
     "prebuild": "node scripts/fetch-card-images.mjs && node scripts/validate-card-assets.mjs",
-    "validate:beta": "node scripts/validate-beta-features.mjs && node scripts/validate-camera-v6.mjs"
+    "validate:beta": "node scripts/validate-beta-features.mjs && node scripts/validate-camera-v3.mjs && node scripts/validate-camera-v4.mjs && node scripts/validate-camera-v5.mjs && node scripts/validate-camera-v62.mjs"
   },
   "dependencies": {
     "dexie": "4.4.4",

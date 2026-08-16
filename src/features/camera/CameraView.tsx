@@ -138,9 +138,9 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
 
   return <section className="page camera-page">
     <button type="button" className="text-button" onClick={back}>← Tarot</button>
-    <span className="eyebrow">CÁMARA · CLASIFICACIÓN ROBUSTA 4.0 · BETA 6</span>
+    <span className="eyebrow">CÁMARA · CLASIFICACIÓN ROBUSTA 4.2 · BETA 6.2</span>
     <h1>Reconocer cartas físicas</h1>
-    <p className="lead">Fotografía <b>una carta por vez</b>. Beta 6 refuerza la identidad con detalle fino, bordes, gradientes y color por zonas; además exige que la coincidencia sea estable entre pequeñas variaciones del mismo encuadre. Las escenas con probable presencia de varias cartas se bloquean.</p>
+    <p className="lead">Fotografía <b>una carta por vez</b>. Beta 6.2 intensifica el reconocimiento individual: tolera mejor descuadre, escala, desplazamiento interno y bordes incompletos, sin relajar el bloqueo cuando realmente hay varias cartas.</p>
 
     <div className="camera-guide">
       <b>Para mejorar el reconocimiento</b>
@@ -237,7 +237,7 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
       return <div key={`${item.cardId}-${index}`}><TarotCardImage card={card} orientation={item.orientation} className="camera-confirmed-image"/><b>{index+1}. {item.cardName}</b><small>{item.orientation==='UPRIGHT'?'Derecha':'Invertida'}</small><button type="button" onClick={()=>remove(index)}>Quitar</button></div>;
     })}</div>}
 
-    <div className="notice-card info"><b>Beta 6</b><span>Clasificación robusta 4.0: una sola carta, comparación por detalle fino y color local, ranking estable entre variaciones pequeñas y bloqueo duro cuando se sospechan varias cartas. El ajuste de 4 esquinas sigue siendo el modo de rescate.</span></div>
+    <div className="notice-card info"><b>Beta 6.2</b><span>Clasificación robusta 4.2: comparación tolerante a desplazamiento, rescates más amplios de escala/posición y mayor peso de la iconografía interior. El ajuste de 4 esquinas sigue disponible como rescate manual.</span></div>
     {!!confirmed.length&&!countReady&&<div className="notice-card warning">Para pasar directamente a una tirada, confirma 1, 3, 5, 6, 7, 9, 10 o 12 cartas. Ahora tienes {confirmed.length}.</div>}
     <button type="button" className="primary-cta" disabled={!countReady} onClick={continueReading}>Usar {confirmed.length||''} carta{confirmed.length===1?'':'s'} en una lectura</button>
   </section>;

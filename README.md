@@ -62,5 +62,9 @@ Durante el build se preparan 78 JPEG dentro de `public/cards`. GitHub Pages publ
 - Mantiene confianza alta/media/baja/no concluyente y modo de prueba con métricas locales.
 - Las fotografías no se almacenan.
 
-## 1.0.0 Beta 6 — clasificación robusta 4.0
-La Beta 6 no inicia todavía el reconocimiento múltiple. Refuerza primero la identificación de una sola carta con detalle fino, cromaticidad local, ranking estable y bloqueo duro cuando la escena parece contener varias cartas. La confianza de identificación se muestra separada de la similitud visual bruta.
+
+## 1.0.0 Beta 6.2 — clasificación robusta 4.2
+Beta 6.2 refuerza agresivamente el reconocimiento de una sola carta antes de iniciar reconocimiento múltiple. Añade comparación tolerante a desplazamientos internos, hipótesis más amplias de escala/posición y mayor peso de la iconografía interior para reducir fallos cuando la carta está visible pero ligeramente descuadrada. El bloqueo multicarta de Beta 6.1 se mantiene.
+
+## 1.0.0 Beta 6.1 — clasificación robusta 4.1
+La Beta 6.1 no inicia todavía el reconocimiento múltiple. Refuerza primero la identificación de una sola carta con detalle fino, cromaticidad local, ranking estable y bloqueo duro cuando la escena parece contener varias cartas. La confianza de identificación se muestra separada de la similitud visual bruta.

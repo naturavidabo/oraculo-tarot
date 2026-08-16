@@ -1,9 +1,9 @@
-ORÁCULO TAROT v1.0.0 Beta 6 — CLASIFICACIÓN ROBUSTA 4.0
+ORÁCULO TAROT v1.0.0 Beta 6.2 — CLASIFICACIÓN ROBUSTA 4.2
 
 1. NO borres el repositorio.
 2. Descomprime este ZIP.
 3. Sube TODO su contenido a la raíz del repositorio y reemplaza los archivos existentes.
-4. Confirma que package.json diga 1.0.0-beta.6.
+4. Confirma que package.json diga 1.0.0-beta.6.2.
 5. GitHub Actions debe preparar/validar las 78 imágenes locales antes de compilar.
-6. Beta 6 mantiene orientación 3.0 y añade detalle fino, color por zonas, estabilidad de ranking y bloqueo duro de escenas multicarta.
+6. Beta 6.2 mantiene orientación 3.0 y añade detalle fino, color por zonas, estabilidad de ranking y bloqueo duro de escenas multicarta.
 7. Si una carta individual queda mal, usa las 4 esquinas y compara el puesto antes/después.

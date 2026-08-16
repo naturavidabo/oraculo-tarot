@@ -56,7 +56,7 @@ function ReadingResult({
 
   return <section className="page reading-result-page">
     <button className="text-button" onClick={restart}>← Nueva lectura</button>
-    <span className="eyebrow">ORÁCULO TAROT · BETA 6</span>
+    <span className="eyebrow">ORÁCULO TAROT · BETA 6.1</span>
     <h1>{result.headline}</h1>
     <p className="lead">{result.directAnswer}</p>
 
@@ -241,7 +241,7 @@ export function TarotView() {
   if(result) return <ReadingResult result={result} spreadName={spread.name} savedId={savedId} presentation={presentation} setPresentation={setPresentation} restart={resetDraw} onClarifier={addClarifier} clarifierBusy={clarifierBusy} clarifierMessage={clarifierMessage}/>;
 
   return <section className="page">
-    <span className="eyebrow">NUEVA LECTURA · ORÁCULO TAROT 1.0 BETA 6</span>
+    <span className="eyebrow">NUEVA LECTURA · ORÁCULO TAROT 1.0 BETA 6.1.1</span>
     <h1>{spread.name}</h1>
     <p className="muted">Saca las cartas y ORÁCULO TAROT mostrará la imagen Rider–Waite y la interpretación contextual. La pregunta es recomendable, pero ya no bloquea la lectura.</p>
 

@@ -56,6 +56,21 @@
 
 # Changelog
 
+
+## 1.0.0-beta.6.2
+- Reconocimiento individual robusto 4.2.
+- Comparación de detalle fino, estructura y bordes tolerante a desplazamientos internos.
+- Rescates más amplios de rotación, escala y posición para cartas ligeramente descuadradas.
+- Mayor peso de la iconografía interior y menor dependencia del marco perfecto.
+- Mantiene bloqueo multicarta conservador, orientación, 4 esquinas, selección manual y motor interpretativo.
+
+## 1.0.0-beta.6.1
+- Corrige falsos positivos multicarta con ventanas espaciales casi disjuntas y bloqueo más conservador.
+- Añade comparación interior para reducir sensibilidad a bordes recortados y perspectiva leve.
+- Amplía hipótesis de encuadre para cartas algo desplazadas, sin tocar orientación ni ajuste manual de 4 esquinas.
+- Mantiene selección manual, 78/78 cartas, tiradas, aclaratorias, historial y motor interpretativo.
+
+
 ## 0.8.0 — Estabilización narrativa, visual y base de cámara
 
 - Traduce la capa visible de interpretación: confianza, motivos, tensiones, mecanismos, categorías y afirmaciones se presentan en español.
