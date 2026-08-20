@@ -63,7 +63,7 @@ const CHROMA_X=8;
 const CHROMA_Y=12;
 const FEEDBACK_KEY='oraculo_camera_feedback_v2';
 
-const referenceCache=new Map<string,Descriptor>();
+const referenceCache=new Map<string,Descriptor[]>();
 
 type CropRect={sx:number;sy:number;sw:number;sh:number};
 type Descriptor={
@@ -97,7 +97,6 @@ function centerCrop(width:number,height:number):CropRect{
   const sh=width/TARGET_RATIO;
   return {sx:0,sy:(height-sh)/2,sw:width,sh};
 }
-
 function insetCrop(rect:CropRect,factor:number):CropRect{
   const px=rect.sw*factor,py=rect.sh*factor;
   return {sx:rect.sx+px,sy:rect.sy+py,sw:rect.sw-px*2,sh:rect.sh-py*2};
@@ -135,14 +134,25 @@ function quickRegionCardLikelihood(gray:Float32Array,w:number,h:number,rx0:numbe
 }
 
 function multipleCardEvidence(gray:Float32Array,w:number,h:number){
-  // Beta 6.1: regiones casi disjuntas. En Beta 6 las ventanas se solapaban
-  // demasiado y una sola carta centrada podía aparecer a la vez en ambos lados.
+  // Beta 6.3: combina regiones disjuntas con pares de ventanas alrededor de
+  // varios puntos de separación. Esto detecta mejor dos cartas contiguas sin
+  // convertir una sola carta centrada en un falso positivo.
   const left=quickRegionCardLikelihood(gray,w,h,.01,.04,.49,.96);
   const right=quickRegionCardLikelihood(gray,w,h,.51,.04,.99,.96);
   const top=quickRegionCardLikelihood(gray,w,h,.04,.01,.96,.49);
   const bottom=quickRegionCardLikelihood(gray,w,h,.04,.51,.96,.99);
-  const horizontal=left.plausible&&right.plausible?Math.min(left.quality,right.quality):0;
-  const vertical=top.plausible&&bottom.plausible?Math.min(top.quality,bottom.quality):0;
+  let horizontal=left.plausible&&right.plausible?Math.min(left.quality,right.quality):0;
+  let vertical=top.plausible&&bottom.plausible?Math.min(top.quality,bottom.quality):0;
+  for(const split of [.42,.46,.50,.54,.58]){
+    const a=quickRegionCardLikelihood(gray,w,h,.01,.03,Math.min(.61,split+.055),.97);
+    const b=quickRegionCardLikelihood(gray,w,h,Math.max(.39,split-.055),.03,.99,.97);
+    if(a.plausible&&b.plausible)horizontal=Math.max(horizontal,Math.min(a.quality,b.quality));
+  }
+  for(const split of [.42,.46,.50,.54,.58]){
+    const a=quickRegionCardLikelihood(gray,w,h,.03,.01,.97,Math.min(.61,split+.055));
+    const b=quickRegionCardLikelihood(gray,w,h,.03,Math.max(.39,split-.055),.97,.99);
+    if(a.plausible&&b.plausible)vertical=Math.max(vertical,Math.min(a.quality,b.quality));
+  }
   return Math.max(horizontal,vertical);
 }
 
@@ -180,7 +190,7 @@ function estimateCardRect(img:HTMLImageElement):{rect:CropRect;method:'AUTO_EDGE
   // Una evidencia parcial ya no basta: debe existir separación espacial fuerte y,
   // salvo evidencia extrema, una geometría global incompatible con una sola carta.
   const incompatibleGeometry=!plausible&&(ratio>.82||ratio<.35)&&area>.20;
-  const multipleLike=(multipleEvidence>=64&&incompatibleGeometry)||(multipleEvidence>=82);
+  const multipleLike=(multipleEvidence>=58&&incompatibleGeometry)||(multipleEvidence>=76);
   if(multipleLike){
     return {rect:centerCrop(img.width,img.height),method:'CENTER_GUIDE',quality:Math.max(quality,multipleEvidence),status:'MULTIPLE_SUSPECTED',message:'Se detectan dos zonas con forma de carta o un encuadre incompatible con una sola carta. En este modo usa una sola carta o encierra una con 4 esquinas.',observedRatio:ratio,multipleEvidence};
   }
@@ -393,15 +403,33 @@ function descriptorSimilarity(a:Descriptor,b:Descriptor){
   const chroma=l1Similarity(a.chroma,b.chroma,.28);
   const color=l1Similarity(a.rgb,b.rgb,.68);
   const hist=l1Similarity(a.hist,b.hist,.10);
-  return fine*.23+edges*.20+hog*.14+structure*.19+chroma*.14+color*.06+hist*.04;
+  return fine*.26+edges*.18+hog*.15+structure*.22+chroma*.12+color*.04+hist*.03;
 }
 
-async function referenceDescriptor(cardId:string){
+async function referenceDescriptors(cardId:string){
   const cached=referenceCache.get(cardId);if(cached)return cached;
   const img=await loadImage(cardImagePath(cardId));
   const rect=centerCrop(img.width,img.height);
-  const upright=descriptorFromImageData(renderNormalized(img,rect));
-  referenceCache.set(cardId,upright);return upright;
+  // Beta 6.3: una carta deja de tener una sola firma visual ideal. Guardamos
+  // varias firmas del mismo arcano para tolerar marcos, escalas y recortes.
+  const views=[
+    renderNormalized(img,rect,0,1,0,0),
+    renderNormalized(img,rect,0,.965,0,0),
+    renderNormalized(img,rect,0,1.045,0,0),
+    renderNormalized(img,rect,0,1.09,0,0),
+    renderNormalized(img,rect,0,1.14,0,0),
+  ];
+  const descriptors=views.map(descriptorFromImageData);
+  referenceCache.set(cardId,descriptors);return descriptors;
+}
+
+function multiReferenceSimilarity(query:Descriptor,refs:Descriptor[]){
+  const scores=refs.map(ref=>descriptorSimilarity(query,ref)).sort((a,b)=>b-a);
+  if(!scores.length)return 0;
+  if(scores.length===1)return scores[0];
+  // La mejor firma manda, pero una segunda coincidencia consistente evita que
+  // un único recorte accidental domine el ranking.
+  return scores[0]*.72+scores[1]*.20+(scores[2]??scores[1])*.08;
 }
 
 function rotateImageData180(image:ImageData){
@@ -431,11 +459,13 @@ function rectQueryImages(img:HTMLImageElement,rect:CropRect){
   // escoja un recorte diferente, que era una fuente de falsos positivos.
   const variants=[
     {r:0,z:1,dx:0,dy:0},
-    {r:-6,z:1.025,dx:0,dy:0},{r:6,z:1.025,dx:0,dy:0},
-    {r:-3,z:.965,dx:0,dy:0},{r:3,z:.965,dx:0,dy:0},
-    {r:0,z:1.075,dx:-.045,dy:0},{r:0,z:1.075,dx:.045,dy:0},
-    {r:0,z:1.06,dx:0,dy:-.035},{r:0,z:1.06,dx:0,dy:.035},
-    {r:0,z:.93,dx:0,dy:0},{r:0,z:1.12,dx:0,dy:0},
+    {r:-5,z:1.02,dx:0,dy:0},{r:5,z:1.02,dx:0,dy:0},
+    {r:-10,z:1.035,dx:0,dy:0},{r:10,z:1.035,dx:0,dy:0},
+    {r:-18,z:1.055,dx:0,dy:0},{r:18,z:1.055,dx:0,dy:0},
+    {r:-26,z:1.08,dx:0,dy:0},{r:26,z:1.08,dx:0,dy:0},
+    {r:0,z:1.08,dx:-.055,dy:0},{r:0,z:1.08,dx:.055,dy:0},
+    {r:0,z:1.07,dx:0,dy:-.045},{r:0,z:1.07,dx:0,dy:.045},
+    {r:0,z:.92,dx:0,dy:0},{r:0,z:1.14,dx:0,dy:0},{r:0,z:1.20,dx:0,dy:0},
   ];
   return variants.map(v=>renderNormalized(img,rect,v.r,v.z,v.dx,v.dy));
 }
@@ -516,7 +546,7 @@ async function evaluateHypothesis(h:CropHypothesis,queries:QueryOrientations,onC
   // ocurre entre rankings completos, no carta por carta.
   for(const card of tarotCards){
     try{
-      const ref=await referenceDescriptor(card.id);
+      const refs=await referenceDescriptors(card.id);
       const robust=(scores:number[])=>{
         if(!scores.length)return 0;
         const ordered=[...scores].sort((a,b)=>b-a);
@@ -524,8 +554,8 @@ async function evaluateHypothesis(h:CropHypothesis,queries:QueryOrientations,onC
         const top=ordered[0],second=ordered[1],third=ordered[2]??second;
         return top*.46+second*.34+third*.20;
       };
-      const uprightScores=queries.original.map(q=>descriptorSimilarity(q,ref));
-      const reversedScores=queries.rotated.map(q=>descriptorSimilarity(q,ref));
+      const uprightScores=queries.original.map(q=>multiReferenceSimilarity(q,refs));
+      const reversedScores=queries.rotated.map(q=>multiReferenceSimilarity(q,refs));
       const uprightMatch=robust(uprightScores),reversedMatch=robust(reversedScores);
       const raw=Math.max(uprightMatch,reversedMatch);
       const orientation:Orientation=reversedMatch>uprightMatch?'REVERSED':'UPRIGHT';
