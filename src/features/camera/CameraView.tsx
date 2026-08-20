@@ -77,9 +77,9 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
 
   async function analyze(){
     if(!file)return;
-    setError('');setRecognition(null);setSelectedCandidateId('');setProgress(precisionMode?'Rectificando por cuatro esquinas…':'Preparando imagen y buscando bordes…');setTestMessage('');setActionMessage('');
+    setError('');setRecognition(null);setSelectedCandidateId('');setProgress(precisionMode?'Rectificando por cuatro esquinas…':'Preparando motor geométrico v7…');setTestMessage('');setActionMessage('');
     try{
-      const result=await recognizeTarotCard(file,(done,total)=>setProgress(`Comparación visual 4.0 ${done}/${total}…`),precisionMode?{corners}:{});
+      const result=await recognizeTarotCard(file,(done,total)=>setProgress(`Motor geométrico v7 ${done}/${total}…`),precisionMode?{corners}:{});
       setRecognition(result);
       const first=result.candidates[0];if(first){setSelectedCandidateId(first.cardId);setSelectedOrientation(first.orientation)}
       if(testActualId){
@@ -138,15 +138,15 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
 
   return <section className="page camera-page">
     <button type="button" className="text-button" onClick={back}>← Tarot</button>
-    <span className="eyebrow">CÁMARA · CLASIFICACIÓN ROBUSTA 4.3 · BETA 6.3</span>
+    <span className="eyebrow">CÁMARA · MOTOR GEOMÉTRICO · V7.0</span>
     <h1>Reconocer cartas físicas</h1>
-    <p className="lead">Fotografía <b>una carta por vez</b>. Beta 6.3 refuerza el reconocimiento individual con múltiples firmas visuales por carta, rescates amplios de rotación/escala y mayor aislamiento del contenido interior, manteniendo bloqueo cuando realmente hay varias cartas.</p>
+    <p className="lead">Fotografía <b>una carta por vez</b>. V7 identifica primero puntos locales propios de la ilustración, exige coherencia geométrica mediante homografía/RANSAC y usa el comparador visual anterior como verificación secundaria.</p>
 
     <div className="camera-guide">
       <b>Para mejorar el reconocimiento</b>
       <span>Haz que la carta ocupe aproximadamente 60–85% de la foto.</span>
       <span>Incluye los cuatro bordes; evita sombras fuertes, dedos y reflejos.</span>
-      <span>La app te avisará antes de analizar si no logra aislar una sola carta.</span>
+      <span>La preevaluación orienta, pero V7 deja que el motor geométrico confirme si existe una o más cartas antes de bloquear.</span>
     </div>
 
     {!precisionMode&&<div className="camera-frame">
@@ -189,14 +189,14 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
       {testActualId&&<select value={testActualOrientation} onChange={e=>setTestActualOrientation(e.target.value as Orientation)}><option value="UPRIGHT">La carta real está derecha</option><option value="REVERSED">La carta real está invertida</option></select>}
     </details>}
 
-    {file&&<button type="button" className="secondary-cta camera-recognize-button" disabled={!!progress||(!precisionMode&&framing?.status==='MULTIPLE_SUSPECTED')} onClick={()=>void analyze()}>{progress||(framing?.status==='MULTIPLE_SUSPECTED'&&!precisionMode?'Usa una sola carta o ajusta 4 esquinas':`✦ Reconocer esta carta${precisionMode?' con 4 esquinas':''}`)}</button>}
+    {file&&<button type="button" className="secondary-cta camera-recognize-button" disabled={!!progress} onClick={()=>void analyze()}>{progress||`✦ Reconocer esta carta${precisionMode?' con 4 esquinas':''}`}</button>}
     {error&&<div className="notice-card warning">{error}</div>}
     {actionMessage&&<div className="notice-card success">{actionMessage}</div>}
     {testMessage&&<div className="notice-card info">{testMessage}</div>}
 
     {recognition&&<div className={`camera-recognition-status ${recognition.confidence.toLowerCase()}`}>
       <b>{confidenceLabel[recognition.confidence]} · confianza {recognition.confidenceScore}/99</b>
-      <span>{recognition.cropMethod==='MANUAL_CORNERS'?'Rectificación manual por cuatro esquinas':recognition.cropMethod==='AUTO_EDGES'?'Encuadre automático ganador':'Encuadre central ganador'} · calidad {recognition.cropQuality}/100 · separación 1.º/2.º {recognition.margin.toFixed(1)} puntos · estabilidad {recognition.recognitionStability}/100 · {recognition.cropHypothesesTested} encuadres evaluados.</span>
+      <span>{recognition.recognitionEngine==='GEOMETRIC_V7'?`Motor geométrico V7 · ${recognition.geometricInliers}/${recognition.geometricMatches} coincidencias geométricas · cobertura ${recognition.geometricCoverage}% · error ${recognition.reprojectionError}`:recognition.cropMethod==='MANUAL_CORNERS'?'Rectificación manual por cuatro esquinas · motor de respaldo':recognition.cropMethod==='AUTO_EDGES'?'Motor visual de respaldo · encuadre automático':'Motor visual de respaldo · encuadre central'} · separación 1.º/2.º {recognition.margin.toFixed(1)} puntos · estabilidad {recognition.recognitionStability}/100.</span>
       {recognition.confidence==='INCONCLUSIVE'&&<small>No hay una coincidencia suficientemente clara. Puedes ajustar las cuatro esquinas, seleccionar uno de los candidatos o corregir manualmente.</small>}
       {recognition.framingWarning&&<small className="camera-framing-warning">{recognition.framingMessage}</small>}
     </div>}
@@ -237,7 +237,7 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
       return <div key={`${item.cardId}-${index}`}><TarotCardImage card={card} orientation={item.orientation} className="camera-confirmed-image"/><b>{index+1}. {item.cardName}</b><small>{item.orientation==='UPRIGHT'?'Derecha':'Invertida'}</small><button type="button" onClick={()=>remove(index)}>Quitar</button></div>;
     })}</div>}
 
-    <div className="notice-card info"><b>Beta 6.3</b><span>Clasificación robusta 4.3: múltiples firmas por carta, rotación ampliada hasta ±26°, comparación interior más fuerte y detector de dos cartas contiguas reforzado. Las 4 esquinas siguen disponibles como respaldo manual.</span></div>
+    <div className="notice-card info"><b>V7.0 · Motor geométrico individual</b><span>Reconocimiento por puntos locales + correspondencias + homografía/RANSAC. El clasificador visual de Beta 6 queda como segunda comprobación y las 4 esquinas siguen disponibles como respaldo manual.</span></div>
     {!!confirmed.length&&!countReady&&<div className="notice-card warning">Para pasar directamente a una tirada, confirma 1, 3, 5, 6, 7, 9, 10 o 12 cartas. Ahora tienes {confirmed.length}.</div>}
     <button type="button" className="primary-cta" disabled={!countReady} onClick={continueReading}>Usar {confirmed.length||''} carta{confirmed.length===1?'':'s'} en una lectura</button>
   </section>;

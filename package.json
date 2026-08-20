@@ -1,7 +1,7 @@
 {
   "name": "oraculo-tarot-pwa",
   "private": true,
-  "version": "1.0.0-beta.6.3",
+  "version": "1.0.0-beta.7",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,7 @@
     "smoke:selector": "node scripts/smoke-selector.cjs",
     "smoke:engine": "node scripts/smoke-engine.cjs",
     "validate:combinations": "node scripts/validate-combinations.mjs",
-    "test:core": "npm run release:audit && npm run validate:content && npm run validate:combinations && npm run validate:images && npm run validate:spanish-ui && npm run validate:beta && npm run validate:pages && npm run smoke:selector && npm run smoke:engine",
+    "test:core": "npm run release:audit && npm run validate:content && npm run validate:combinations && npm run validate:images && npm run validate:spanish-ui && npm run validate:beta && npm run validate:pages && npm run smoke:selector && npm run smoke:engine && npm run smoke:geometric",
     "release:audit": "node scripts/release-audit.mjs",
     "validate:pages": "node scripts/validate-pages.mjs",
     "build:strict": "npm run typecheck && vite build",
@@ -23,7 +23,8 @@
     "validate:spanish-ui": "node scripts/validate-spanish-ui.mjs",
     "postinstall": "node scripts/fetch-card-images.mjs && node scripts/validate-card-assets.mjs",
     "prebuild": "node scripts/fetch-card-images.mjs && node scripts/validate-card-assets.mjs",
-    "validate:beta": "node scripts/validate-beta-features.mjs && node scripts/validate-camera-v63.mjs"
+    "validate:beta": "node scripts/validate-beta-features.mjs && node scripts/validate-camera-v7.mjs",
+    "smoke:geometric": "node scripts/smoke-geometric.cjs"
   },
   "dependencies": {
     "dexie": "4.4.4",

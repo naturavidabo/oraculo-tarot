@@ -1,32 +1,36 @@
 # Estado de ORÁCULO TAROT
 
-## Versión de trabajo: 1.0.0 Beta 6.3
+## Versión de trabajo: 1.0.0 Beta 7
 
-Estado: **Tarot estable + cámara individual en afinación avanzada**.
+Estado: **Tarot estable + nuevo motor geométrico individual en validación física**.
 
 ### Base estable
-- 78/78 imágenes Rider–Waite locales.
-- Motor interpretativo independiente de imágenes y diagnóstico operativo.
+- 78/78 imágenes Rider–Waite locales tras el build.
+- Motor interpretativo independiente de imágenes.
 - Tiradas físicas y virtuales, historial, aclaratorias, biblioteca, aprendizaje y respaldo.
-- Motor narrativo 0.6 en español.
-- Selección manual y confirmación táctil operativas.
+- Selección manual y confirmación táctil.
+- Orientación derecha/invertida preservada como etapa separada.
+- Ajuste preciso de cuatro esquinas preservado como respaldo.
 
-### Cámara Beta 6.3
-- Reconocimiento de una carta por fotografía.
-- Comparación visual 2.5/3.0 con estructura, bordes, color, HOG y varios recortes.
-- Ajuste preciso de cuatro esquinas.
-- **Orientación 3.0:** identidad y derecha/invertida se calculan por etapas separadas.
-- La foto original y una copia rotada físicamente 180° se comparan contra la misma referencia derecha.
-- Confianza y margen específicos de orientación; puede indicar orientación dudosa.
-- Modo de prueba registra carta real y orientación real sin guardar fotografías.
-- Editor táctil protegido contra selección/copiar/menú contextual.
-- Advertencia de encuadre ambiguo para evitar usar varias cartas en este modo.
-- Métricas locales Top 1 / Top 5 / orientación correcta.
+### Cámara Beta 7
+- Puntos locales con orientación y descriptor binario de 256 bits.
+- Matching contra las 78 cartas.
+- Homografía + RANSAC para exigir coherencia geométrica.
+- Métricas: correspondencias, inliers, cobertura y error de reproyección.
+- Rectificación geométrica antes de la verificación visual secundaria.
+- Motor visual Beta 6.3 como fallback si no existe geometría suficiente.
+- Detección multicarta basada también en hipótesis geométricas espacialmente separadas.
+- La advertencia previa de encuadre no bloquea por sí sola una carta individual.
 
-### Aún pendiente
-- Validar orientación 3.0 con pruebas reales derecha/invertida.
-- Seguir mejorando precisión con más pruebas reales.
-- Reconocimiento de varias cartas en una sola fotografía.
+### Validación física pendiente
+- Mago, Templanza, Justicia, Hierofante, As de Copas y As de Oros.
+- Rotación/perspectiva moderada con Mago y Templanza.
+- Hierofante + Templanza juntos para comprobar bloqueo geométrico.
+- Objetivo: Top 1–3 consistente antes de activar reconocimiento múltiple real.
+
+### Después de validar V7
+- Reconocimiento experimental de 2–3 cartas.
+- Ampliación progresiva a 5–7 y luego 9–12.
 - Voz / lectura en altavoz.
 - IA externa opcional para redacción ampliada.
-- Sincronización en nube.
+- Sincronización en nube opcional.
