@@ -138,9 +138,9 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
 
   return <section className="page camera-page">
     <button type="button" className="text-button" onClick={back}>← Tarot</button>
-    <span className="eyebrow">CÁMARA · CLASIFICACIÓN ROBUSTA 4.2 · BETA 6.2</span>
+    <span className="eyebrow">CÁMARA · CLASIFICACIÓN ROBUSTA 4.3 · BETA 6.3</span>
     <h1>Reconocer cartas físicas</h1>
-    <p className="lead">Fotografía <b>una carta por vez</b>. Beta 6.2 intensifica el reconocimiento individual: tolera mejor descuadre, escala, desplazamiento interno y bordes incompletos, sin relajar el bloqueo cuando realmente hay varias cartas.</p>
+    <p className="lead">Fotografía <b>una carta por vez</b>. Beta 6.3 refuerza el reconocimiento individual con múltiples firmas visuales por carta, rescates amplios de rotación/escala y mayor aislamiento del contenido interior, manteniendo bloqueo cuando realmente hay varias cartas.</p>
 
     <div className="camera-guide">
       <b>Para mejorar el reconocimiento</b>
@@ -237,7 +237,7 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
       return <div key={`${item.cardId}-${index}`}><TarotCardImage card={card} orientation={item.orientation} className="camera-confirmed-image"/><b>{index+1}. {item.cardName}</b><small>{item.orientation==='UPRIGHT'?'Derecha':'Invertida'}</small><button type="button" onClick={()=>remove(index)}>Quitar</button></div>;
     })}</div>}
 
-    <div className="notice-card info"><b>Beta 6.2</b><span>Clasificación robusta 4.2: comparación tolerante a desplazamiento, rescates más amplios de escala/posición y mayor peso de la iconografía interior. El ajuste de 4 esquinas sigue disponible como rescate manual.</span></div>
+    <div className="notice-card info"><b>Beta 6.3</b><span>Clasificación robusta 4.3: múltiples firmas por carta, rotación ampliada hasta ±26°, comparación interior más fuerte y detector de dos cartas contiguas reforzado. Las 4 esquinas siguen disponibles como respaldo manual.</span></div>
     {!!confirmed.length&&!countReady&&<div className="notice-card warning">Para pasar directamente a una tirada, confirma 1, 3, 5, 6, 7, 9, 10 o 12 cartas. Ahora tienes {confirmed.length}.</div>}
     <button type="button" className="primary-cta" disabled={!countReady} onClick={continueReading}>Usar {confirmed.length||''} carta{confirmed.length===1?'':'s'} en una lectura</button>
   </section>;
