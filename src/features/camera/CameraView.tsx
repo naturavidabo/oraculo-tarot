@@ -40,7 +40,9 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
   const used=useMemo(()=>new Set(confirmed.map(x=>x.cardId)),[confirmed]);
   const supportedCounts=useMemo(()=>new Set([1,3,5,6,7,9,10,12]),[]);
   const countReady=supportedCounts.has(confirmed.length);
-  const candidates=(recognition?.candidates??[]).filter(x=>!used.has(x.cardId));
+  // En modo de prueba no se ocultan cartas ya confirmadas: el Top debe conservar
+  // todos los puestos para que la medición sea transparente.
+  const candidates=testActualId?(recognition?.candidates??[]):(recognition?.candidates??[]).filter(x=>!used.has(x.cardId));
   const selectedCandidate=recognition?.all.find(x=>x.cardId===selectedCandidateId);
   const manualOptions=useMemo(()=>{
     const q=manualSearch.trim().toLocaleLowerCase('es');
@@ -77,9 +79,9 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
 
   async function analyze(){
     if(!file)return;
-    setError('');setRecognition(null);setSelectedCandidateId('');setProgress(precisionMode?'Rectificando por cuatro esquinas…':'Preparando motor geométrico v7…');setTestMessage('');setActionMessage('');
+    setError('');setRecognition(null);setSelectedCandidateId('');setProgress(precisionMode?'Rectificando por cuatro esquinas…':'Preparando motor híbrido v7.0.1…');setTestMessage('');setActionMessage('');
     try{
-      const result=await recognizeTarotCard(file,(done,total)=>setProgress(`Motor geométrico v7 ${done}/${total}…`),precisionMode?{corners}:{});
+      const result=await recognizeTarotCard(file,(done,total)=>setProgress(`Motor geométrico v7.0.1 ${done}/${total}…`),precisionMode?{corners}:{});
       setRecognition(result);
       const first=result.candidates[0];if(first){setSelectedCandidateId(first.cardId);setSelectedOrientation(first.orientation)}
       if(testActualId){
@@ -138,9 +140,9 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
 
   return <section className="page camera-page">
     <button type="button" className="text-button" onClick={back}>← Tarot</button>
-    <span className="eyebrow">CÁMARA · MOTOR GEOMÉTRICO · V7.0</span>
+    <span className="eyebrow">CÁMARA · MOTOR HÍBRIDO · V7.0.1</span>
     <h1>Reconocer cartas físicas</h1>
-    <p className="lead">Fotografía <b>una carta por vez</b>. V7 identifica primero puntos locales propios de la ilustración, exige coherencia geométrica mediante homografía/RANSAC y usa el comparador visual anterior como verificación secundaria.</p>
+    <p className="lead">Fotografía <b>una carta por vez</b>. V7.0.1 combina puntos locales + homografía/RANSAC con una segunda vía visual independiente para cartas pequeñas o con pocos rasgos locales. La orientación se deriva primero de la geometría de la carta.</p>
 
     <div className="camera-guide">
       <b>Para mejorar el reconocimiento</b>
@@ -196,7 +198,7 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
 
     {recognition&&<div className={`camera-recognition-status ${recognition.confidence.toLowerCase()}`}>
       <b>{confidenceLabel[recognition.confidence]} · confianza {recognition.confidenceScore}/99</b>
-      <span>{recognition.recognitionEngine==='GEOMETRIC_V7'?`Motor geométrico V7 · ${recognition.geometricInliers}/${recognition.geometricMatches} coincidencias geométricas · cobertura ${recognition.geometricCoverage}% · error ${recognition.reprojectionError}`:recognition.cropMethod==='MANUAL_CORNERS'?'Rectificación manual por cuatro esquinas · motor de respaldo':recognition.cropMethod==='AUTO_EDGES'?'Motor visual de respaldo · encuadre automático':'Motor visual de respaldo · encuadre central'} · separación 1.º/2.º {recognition.margin.toFixed(1)} puntos · estabilidad {recognition.recognitionStability}/100.</span>
+      <span>{recognition.recognitionEngine==='HYBRID_V7_0_1'?`Motor híbrido V7.0.1 · ${recognition.geometricInliers}/${recognition.geometricMatches} coincidencias geométricas · cobertura ${recognition.geometricCoverage}% · error ${recognition.reprojectionError}`:recognition.recognitionEngine==='GEOMETRIC_V7'?`Motor geométrico V7 · ${recognition.geometricInliers}/${recognition.geometricMatches} coincidencias geométricas · cobertura ${recognition.geometricCoverage}% · error ${recognition.reprojectionError}`:recognition.cropMethod==='MANUAL_CORNERS'?'Rectificación manual por cuatro esquinas · motor de respaldo':recognition.cropMethod==='AUTO_EDGES'?'Motor visual de respaldo · encuadre automático':'Motor visual de respaldo · encuadre central'} · separación 1.º/2.º {recognition.margin.toFixed(1)} puntos · estabilidad {recognition.recognitionStability}/100.</span>
       {recognition.confidence==='INCONCLUSIVE'&&<small>No hay una coincidencia suficientemente clara. Puedes ajustar las cuatro esquinas, seleccionar uno de los candidatos o corregir manualmente.</small>}
       {recognition.framingWarning&&<small className="camera-framing-warning">{recognition.framingMessage}</small>}
     </div>}
@@ -237,7 +239,7 @@ export function CameraView({back,startManual}:{back:()=>void;startManual:()=>voi
       return <div key={`${item.cardId}-${index}`}><TarotCardImage card={card} orientation={item.orientation} className="camera-confirmed-image"/><b>{index+1}. {item.cardName}</b><small>{item.orientation==='UPRIGHT'?'Derecha':'Invertida'}</small><button type="button" onClick={()=>remove(index)}>Quitar</button></div>;
     })}</div>}
 
-    <div className="notice-card info"><b>V7.0 · Motor geométrico individual</b><span>Reconocimiento por puntos locales + correspondencias + homografía/RANSAC. El clasificador visual de Beta 6 queda como segunda comprobación y las 4 esquinas siguen disponibles como respaldo manual.</span></div>
+    <div className="notice-card info"><b>V7.0.1 · Motor híbrido individual</b><span>Geometría local + homografía/RANSAC + rescate visual independiente. Mejora cartas pequeñas, Ases con pocos puntos, orientación invertida y detección de dos cartas próximas. Las 4 esquinas siguen disponibles como respaldo manual.</span></div>
     {!!confirmed.length&&!countReady&&<div className="notice-card warning">Para pasar directamente a una tirada, confirma 1, 3, 5, 6, 7, 9, 10 o 12 cartas. Ahora tienes {confirmed.length}.</div>}
     <button type="button" className="primary-cta" disabled={!countReady} onClick={continueReading}>Usar {confirmed.length||''} carta{confirmed.length===1?'':'s'} en una lectura</button>
   </section>;

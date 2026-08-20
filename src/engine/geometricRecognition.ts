@@ -30,15 +30,15 @@ type TentativeMatch={q:Feature;r:Feature;distance:number};
 
 type GrayImage={width:number;height:number;gray:Float32Array};
 
-const QUERY_MAX_SIDE=520;
-const REFERENCE_MAX_SIDE=420;
-const MAX_QUERY_FEATURES=360;
-const MAX_REFERENCE_FEATURES=280;
+const QUERY_MAX_SIDE=680;
+const REFERENCE_MAX_SIDE=480;
+const MAX_QUERY_FEATURES=620;
+const MAX_REFERENCE_FEATURES=390;
 const BRIEF_BITS=256;
 const BRIEF_WORDS=BRIEF_BITS/32;
 const PATCH_RADIUS=15;
-const RANSAC_ITERATIONS=150;
-const RANSAC_THRESHOLD=.042;
+const RANSAC_ITERATIONS=220;
+const RANSAC_THRESHOLD=.040;
 const referenceFeatureCache=new Map<string,Promise<FeatureSet>>();
 
 function clamp(n:number,min:number,max:number){return Math.max(min,Math.min(max,n));}
@@ -144,17 +144,21 @@ function detectFeaturesAtScale(img:GrayImage,scaleToBase:number,maxFeatures:numb
     gx[p]=sx;gy[p]=sy;xx[p]=sx*sx;yy[p]=sy*sy;xy[p]=sx*sy;
   }
   const ixx=integral(xx,w,h),iyy=integral(yy,w,h),ixy=integral(xy,w,h);
-  const candidates:{x:number;y:number;response:number}[]=[];
+  // V7.0.1: umbral Harris adaptativo. Las cartas con áreas limpias (Ases) o
+  // fotografiadas más pequeñas ya no quedan sin puntos solo por usar un umbral fijo.
+  const rawCandidates:{x:number;y:number;response:number}[]=[];
+  let maxResponse=0;
   const window=3,border=PATCH_RADIUS+3;
   for(let y=border;y<h-border;y+=2)for(let x=border;x<w-border;x+=2){
     const x0=x-window,y0=y-window,x1=x+window+1,y1=y+window+1;
     const a=boxSum(ixx,w,x0,y0,x1,y1),b=boxSum(ixy,w,x0,y0,x1,y1),c=boxSum(iyy,w,x0,y0,x1,y1);
     const det=a*c-b*b,trace=a+c,response=det-.045*trace*trace;
-    if(response>1.5e7)candidates.push({x,y,response});
+    if(response>0){rawCandidates.push({x,y,response});if(response>maxResponse)maxResponse=response}
   }
-  candidates.sort((a,b)=>b.response-a.response);
+  const adaptiveThreshold=Math.max(7.5e5,maxResponse*.0045);
+  const candidates=rawCandidates.filter(row=>row.response>=adaptiveThreshold).sort((a,b)=>b.response-a.response);
   const selected:{x:number;y:number;response:number}[]=[];
-  const minDist=9,minDist2=minDist*minDist;
+  const minDist=7,minDist2=minDist*minDist;
   for(const c of candidates){
     let close=false;
     for(let i=Math.max(0,selected.length-120);i<selected.length;i++){const p=selected[i];const dx=p.x-c.x,dy=p.y-c.y;if(dx*dx+dy*dy<minDist2){close=true;break}}
@@ -176,7 +180,7 @@ function extractFeatureSet(img:HTMLImageElement,maxSide:number,maxFeatures:numbe
 
 function referenceFeatures(cardId:string){
   const cached=referenceFeatureCache.get(cardId);if(cached)return cached;
-  const promise=(async()=>{const img=await loadImage(cardImagePath(cardId));return extractFeatureSet(img,REFERENCE_MAX_SIDE,MAX_REFERENCE_FEATURES,[1,.78,.61])})();
+  const promise=(async()=>{const img=await loadImage(cardImagePath(cardId));return extractFeatureSet(img,REFERENCE_MAX_SIDE,MAX_REFERENCE_FEATURES,[1.12,1,.80,.64])})();
   referenceFeatureCache.set(cardId,promise);return promise;
 }
 
@@ -188,11 +192,11 @@ function tentativeMatches(query:FeatureSet,ref:FeatureSet){
   for(const q of query.features){
     let best=999,second=999,bestRef:Feature|null=null;
     for(const r of ref.features){const d=hamming(q.bits,r.bits);if(d<best){second=best;best=d;bestRef=r}else if(d<second)second=d}
-    if(bestRef&&best<=92&&best<second*.82)provisional.push({q,r:bestRef,distance:best});
+    if(bestRef&&best<=104&&best<second*.86)provisional.push({q,r:bestRef,distance:best});
   }
   provisional.sort((a,b)=>a.distance-b.distance);
   const unique:TentativeMatch[]=[];const usedRef=new Set<Feature>();const usedQuery=new Set<Feature>();
-  for(const row of provisional){if(usedRef.has(row.r)||usedQuery.has(row.q))continue;usedRef.add(row.r);usedQuery.add(row.q);unique.push(row);if(unique.length>=80)break}
+  for(const row of provisional){if(usedRef.has(row.r)||usedQuery.has(row.q))continue;usedRef.add(row.r);usedQuery.add(row.q);unique.push(row);if(unique.length>=120)break}
   return unique;
 }
 
@@ -225,7 +229,7 @@ function triangleArea(a:Feature,b:Feature,c:Feature,ref:FeatureSet){const ax=a.x
 
 function seeded(seedText:string){let s=2166136261;for(let i=0;i<seedText.length;i++){s^=seedText.charCodeAt(i);s=Math.imul(s,16777619)}return ()=>{s^=s<<13;s^=s>>>17;s^=s<<5;return (s>>>0)/4294967296}}
 function ransacHomography(matches:TentativeMatch[],query:FeatureSet,ref:FeatureSet,seedText:string){
-  if(matches.length<7)return {h:null as number[]|null,inliers:[] as number[],error:1,coverage:0};
+  if(matches.length<5)return {h:null as number[]|null,inliers:[] as number[],error:1,coverage:0};
   const rand=seeded(seedText);let best:number[]=[],bestH:number[]|null=null,bestError=Infinity;
   const n=matches.length;
   for(let iter=0;iter<RANSAC_ITERATIONS;iter++){
@@ -244,7 +248,7 @@ function ransacHomography(matches:TentativeMatch[],query:FeatureSet,ref:FeatureS
     const avg=inliers.length?error/inliers.length:1;
     if(inliers.length>best.length||(inliers.length===best.length&&avg<bestError)){best=inliers;bestH=h;bestError=avg}
   }
-  if(best.length>=6){const refined=homographyFrom(matches,best,query,ref);if(refined){bestH=refined;let e=0;const kept:number[]=[];for(const idx of best){const m=matches[idx],p=project(refined,m.r.x/ref.width,m.r.y/ref.height);if(!p)continue;const err=Math.hypot(p.x-m.q.x/query.width,p.y-m.q.y/query.height);if(err<RANSAC_THRESHOLD*1.15){kept.push(idx);e+=err}}best=kept;bestError=kept.length?e/kept.length:1}}
+  if(best.length>=5){const refined=homographyFrom(matches,best,query,ref);if(refined){bestH=refined;let e=0;const kept:number[]=[];for(const idx of best){const m=matches[idx],p=project(refined,m.r.x/ref.width,m.r.y/ref.height);if(!p)continue;const err=Math.hypot(p.x-m.q.x/query.width,p.y-m.q.y/query.height);if(err<RANSAC_THRESHOLD*1.15){kept.push(idx);e+=err}}best=kept;bestError=kept.length?e/kept.length:1}}
   let coverage=0;
   if(best.length){let minX=1,minY=1,maxX=0,maxY=0;for(const idx of best){const r=matches[idx].r;const x=r.x/ref.width,y=r.y/ref.height;minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y)}coverage=clamp((maxX-minX)*(maxY-minY),0,1)}
   return {h:bestH,inliers:best,error:bestError,coverage};
@@ -258,31 +262,54 @@ function centerOfPolygon(p:GeometricPolygon|null){if(!p)return null;return {x:p.
 function polygonQuality(p:GeometricPolygon|null){
   if(!p)return 0;
   let area2=0;for(let i=0;i<4;i++){const a=p[i],b=p[(i+1)%4];area2+=a.x*b.y-b.x*a.y}
-  const area=Math.abs(area2)*.5;if(area<.035||area>1.15)return 0;
+  const area=Math.abs(area2)*.5;if(area<.020||area>1.15)return 0;
   const edges=p.map((a,i)=>{const b=p[(i+1)%4];return Math.hypot(a.x-b.x,a.y-b.y)});
   if(Math.min(...edges)<.075||Math.max(...edges)>1.65)return 0;
   let sign=0,convex=true;for(let i=0;i<4;i++){const a=p[i],b=p[(i+1)%4],c=p[(i+2)%4];const cross=(b.x-a.x)*(c.y-b.y)-(b.y-a.y)*(c.x-b.x);const s=Math.sign(cross);if(!s)continue;if(sign&&s!==sign){convex=false;break}sign=s}
   if(!convex)return 0;
   const inside=p.filter(a=>a.x>-.12&&a.x<1.12&&a.y>-.12&&a.y<1.12).length/4;
   const oppositeBalance=Math.min(edges[0],edges[2])/Math.max(edges[0],edges[2],1e-6)*.5+Math.min(edges[1],edges[3])/Math.max(edges[1],edges[3],1e-6)*.5;
-  const areaStrength=clamp((area-.035)/.28,0,1);
+  const areaStrength=clamp((area-.020)/.28,0,1);
   return clamp(inside*.42+oppositeBalance*.28+areaStrength*.30,0,1);
 }
 
 function geometryScore(good:number,inliers:number,ratio:number,coverage:number,error:number){
-  const matchStrength=clamp((good-5)/28,0,1),inlierStrength=clamp((inliers-4)/24,0,1);
-  const ratioStrength=clamp((ratio-.28)/.58,0,1),coverageStrength=clamp((coverage-.08)/.58,0,1),errorStrength=clamp(1-error/RANSAC_THRESHOLD,0,1);
-  return clamp(matchStrength*.15+inlierStrength*.30+ratioStrength*.22+coverageStrength*.19+errorStrength*.14,0,1);
+  const matchStrength=clamp((good-3)/26,0,1),inlierStrength=clamp((inliers-3)/22,0,1);
+  const ratioStrength=clamp((ratio-.24)/.60,0,1),coverageStrength=clamp((coverage-.045)/.56,0,1),errorStrength=clamp(1-error/RANSAC_THRESHOLD,0,1);
+  return clamp(matchStrength*.15+inlierStrength*.29+ratioStrength*.22+coverageStrength*.20+errorStrength*.14,0,1);
 }
 
+function polygonBounds(p:GeometricPolygon|null){
+  if(!p)return null;const xs=p.map(x=>x.x),ys=p.map(x=>x.y);
+  return {x0:Math.min(...xs),y0:Math.min(...ys),x1:Math.max(...xs),y1:Math.max(...ys)};
+}
+function polygonBoxIoU(a:GeometricPolygon|null,b:GeometricPolygon|null){
+  const aa=polygonBounds(a),bb=polygonBounds(b);if(!aa||!bb)return 1;
+  const iw=Math.max(0,Math.min(aa.x1,bb.x1)-Math.max(aa.x0,bb.x0));
+  const ih=Math.max(0,Math.min(aa.y1,bb.y1)-Math.max(aa.y0,bb.y0));
+  const inter=iw*ih,areaA=Math.max(1e-6,(aa.x1-aa.x0)*(aa.y1-aa.y0)),areaB=Math.max(1e-6,(bb.x1-bb.x0)*(bb.y1-bb.y0));
+  return inter/Math.max(1e-6,areaA+areaB-inter);
+}
 function polygonsSeparated(a:GeometricCardMatch,b:GeometricCardMatch){
-  if(!a.center||!b.center)return false;
+  if(!a.center||!b.center||!a.polygon||!b.polygon)return false;
   const distance=Math.hypot(a.center.x-b.center.x,a.center.y-b.center.y);
-  return distance>.18;
+  const iou=polygonBoxIoU(a.polygon,b.polygon);
+  // Dos cartas muy juntas siguen teniendo centros distintos y poca superposición.
+  // Dos hipótesis falsas sobre la misma carta suelen solaparse mucho.
+  return distance>.105&&iou<.52;
+}
+
+export function homographyOrientation(h:number[]|null){
+  if(!h)return null;
+  const top=project(h,.5,.16),bottom=project(h,.5,.84);if(!top||!bottom)return null;
+  const dx=bottom.x-top.x,dy=bottom.y-top.y,length=Math.hypot(dx,dy);if(length<.08)return null;
+  const verticality=Math.abs(dy)/length;
+  const confidence=clamp((verticality-.42)/.50,0,1);
+  return {orientation:dy>=0?'UPRIGHT' as const:'REVERSED' as const,confidence,verticality};
 }
 
 export async function recognizeGeometrically(photo:HTMLImageElement,onProgress?:(done:number,total:number)=>void):Promise<GeometricRecognitionResult>{
-  const query=extractFeatureSet(photo,QUERY_MAX_SIDE,MAX_QUERY_FEATURES,[1,.80,.64]);
+  const query=extractFeatureSet(photo,QUERY_MAX_SIDE,MAX_QUERY_FEATURES,[1.24,1,.80,.63]);
   const coarse:{cardId:string;cardName:string;good:number;matches:TentativeMatch[];ref:FeatureSet}[]=[];
   let done=0;
   for(const card of tarotCards){
@@ -290,14 +317,15 @@ export async function recognizeGeometrically(photo:HTMLImageElement,onProgress?:
     done++;onProgress?.(done,tarotCards.length*2);if(done%2===0)await nextFrame();
   }
   coarse.sort((a,b)=>b.good-a.good);
-  const finalists=coarse.slice(0,Math.min(22,coarse.length));const matches:GeometricCardMatch[]=[];
+  const finalists=coarse.filter(x=>x.good>=4).slice(0,Math.min(48,coarse.length));const matches:GeometricCardMatch[]=[];
   for(let i=0;i<finalists.length;i++){
     const row=finalists[i];const r=ransacHomography(row.matches,query,row.ref,row.cardId);
     const ratio=r.inliers.length/Math.max(1,row.matches.length);
     const polygon=polygonFromHomography(r.h),shape=polygonQuality(polygon);
     const baseScore=geometryScore(row.matches.length,r.inliers.length,ratio,r.coverage,r.error);
-    const score=shape<.20?baseScore*.35:baseScore*(.68+shape*.32);
-    matches.push({cardId:row.cardId,cardName:row.cardName,score,goodMatches:row.matches.length,inliers:r.inliers.length,inlierRatio:ratio,coverage:r.coverage,reprojectionError:r.error,homography:shape>=.20?r.h:null,polygon:shape>=.20?polygon:null,center:shape>=.20?centerOfPolygon(polygon):null});
+    const score=shape<.14?baseScore*.35:baseScore*(.66+shape*.34);
+    const usableShape=shape>=.14&&r.inliers.length>=5;
+    matches.push({cardId:row.cardId,cardName:row.cardName,score,goodMatches:row.matches.length,inliers:r.inliers.length,inlierRatio:ratio,coverage:r.coverage,reprojectionError:r.error,homography:usableShape?r.h:null,polygon:usableShape?polygon:null,center:usableShape?centerOfPolygon(polygon):null});
     onProgress?.(tarotCards.length+i+1,tarotCards.length+finalists.length);if(i%2===1)await nextFrame();
   }
   const finalistIds=new Set(matches.map(x=>x.cardId));
@@ -308,9 +336,19 @@ export async function recognizeGeometrically(photo:HTMLImageElement,onProgress?:
   }
   matches.sort((a,b)=>b.score-a.score||b.inliers-a.inliers||b.goodMatches-a.goodMatches);
   const strong=matches.filter(x=>x.score>=.49&&x.inliers>=8&&x.inlierRatio>=.36&&x.coverage>=.12);
+  // V7.0.1: para detectar dos cartas no exigimos que la segunda alcance el mismo
+  // umbral de clasificación que la primera. Basta una segunda homografía moderada,
+  // geométricamente separada y poco solapada. Esto cubre cartas casi pegadas.
+  const multiCandidates=matches.filter(x=>!!x.homography&&x.score>=.34&&x.inliers>=6&&x.inlierRatio>=.28&&x.coverage>=.065).slice(0,14);
   let multipleEvidence=0,multipleSuspected=false;
-  outer:for(let i=0;i<strong.length;i++)for(let j=i+1;j<strong.length;j++){
-    if(polygonsSeparated(strong[i],strong[j])){multipleSuspected=true;multipleEvidence=Math.round(clamp(Math.min(strong[i].score,strong[j].score)*100,0,99));break outer}
+  outer:for(let i=0;i<multiCandidates.length;i++)for(let j=i+1;j<multiCandidates.length;j++){
+    if(polygonsSeparated(multiCandidates[i],multiCandidates[j])){
+      multipleSuspected=true;
+      const weak=Math.min(multiCandidates[i].score,multiCandidates[j].score);
+      const support=Math.min(multiCandidates[i].inliers,multiCandidates[j].inliers);
+      multipleEvidence=Math.round(clamp(weak*.78+clamp((support-5)/15,0,1)*.22,0,.99)*100);
+      break outer;
+    }
   }
   return {matches,queryFeatureCount:query.features.length,strongMatches:strong.length,multipleSuspected,multipleEvidence};
 }

@@ -1,3 +1,13 @@
+# Changelog
+
+## 1.0.0-beta.7.0.1
+- Motor híbrido individual: geometría local + verificación visual independiente.
+- Umbral de keypoints adaptativo y pirámide de mayor resolución para cartas pequeñas/distantes.
+- Rescate especial para cartas con pocos rasgos locales, como los Ases.
+- Orientación derecha/invertida derivada prioritariamente de la homografía.
+- Detección multicarta reforzada para dos cartas muy próximas pero espacialmente distintas.
+- En modo de prueba ya no se ocultan candidatos confirmados, evitando saltos engañosos de ranking.
+
 # CHANGELOG
 
 ## 1.0.0-beta.7

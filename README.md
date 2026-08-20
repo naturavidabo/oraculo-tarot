@@ -64,6 +64,9 @@ Durante el build se preparan 78 JPEG dentro de `public/cards`. GitHub Pages publ
 
 
 
+## 1.0.0 Beta 7.0.1 — motor híbrido individual
+Beta 7.0.1 conserva la geometría de V7 y añade una segunda vía visual independiente para rescatar cartas pequeñas, simples o con pocos puntos locales. La detección de keypoints usa umbral adaptativo y una pirámide más amplia; la orientación derecha/invertida se deriva primero de la homografía; y el detector multicarta acepta una segunda homografía moderada si está espacialmente separada de la primera.
+
 ## 1.0.0 Beta 7 — motor geométrico individual
 Beta 7 cambia la arquitectura principal del reconocimiento de cámara. En vez de decidir por semejanza global, detecta puntos locales de la ilustración, construye descriptores binarios orientados, busca correspondencias contra las 78 referencias y exige una homografía coherente con RANSAC. La homografía permite rectificar la carta encontrada y el clasificador visual de Beta 6 queda como segunda comprobación. Si la geometría no es suficiente, el motor anterior sigue disponible como respaldo; selección manual y cuatro esquinas permanecen intactas.
 

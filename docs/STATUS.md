@@ -1,6 +1,6 @@
 # Estado de ORÁCULO TAROT
 
-## Versión de trabajo: 1.0.0 Beta 7
+## Versión de trabajo: 1.0.0 Beta 7.0.1
 
 Estado: **Tarot estable + nuevo motor geométrico individual en validación física**.
 
@@ -12,7 +12,7 @@ Estado: **Tarot estable + nuevo motor geométrico individual en validación fís
 - Orientación derecha/invertida preservada como etapa separada.
 - Ajuste preciso de cuatro esquinas preservado como respaldo.
 
-### Cámara Beta 7
+### Cámara Beta 7.0.1
 - Puntos locales con orientación y descriptor binario de 256 bits.
 - Matching contra las 78 cartas.
 - Homografía + RANSAC para exigir coherencia geométrica.

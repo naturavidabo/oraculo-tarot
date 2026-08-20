@@ -59,15 +59,15 @@ export function MoreView(){
     <button className="secondary-cta" onClick={()=>setDiagnostic(runEngineSelfTest())}>Ejecutar diagnóstico del motor</button>
     {diagnostic&&<div className={`diagnostic-panel ${diagnostic.ok?'ok':'fail'}`}><b>{diagnostic.ok?'✓ Motor interpretativo operativo':'✗ Motor interpretativo con falla'}</b>{diagnostic.checks.map(item=><div key={item.label}><span>{item.ok?'✓':'✗'} {item.label}</span><small>{item.detail}</small></div>)}</div>}
 
-    <div className="section-title"><h2>Diagnóstico de cámara</h2><span>Beta 7</span></div>
+    <div className="section-title"><h2>Diagnóstico de cámara</h2><span>Beta 7.0.1</span></div>
     <p className="muted">Cada vez que corriges o pruebas una carta, se guarda únicamente el puesto que obtuvo la carta real. Las fotografías no se guardan.</p>
     <div className="status-card camera-stats"><div><strong>{cameraStats.samples}</strong><span>pruebas registradas</span></div><div><strong>{cameraStats.samples?Math.round(cameraStats.top1/cameraStats.samples*100):0}%</strong><span>acierto Top 1</span></div><div><strong>{cameraStats.samples?Math.round(cameraStats.top5/cameraStats.samples*100):0}%</strong><span>carta real en Top 5</span></div></div>
     {!!cameraStats.samples&&<div className="notice-card info">Puesto promedio de la carta real: <b>{cameraStats.avgRank}/78</b>. Esta métrica sirve para comprobar si las siguientes versiones realmente mejoran.</div>}
     {!!cameraStats.orientationSamples&&<div className="status-card camera-orientation-stats"><div><strong>{cameraStats.orientationSamples}</strong><span>pruebas con orientación</span></div><div><strong>{Math.round(cameraStats.orientationCorrect/cameraStats.orientationSamples*100)}%</strong><span>orientación correcta</span></div><div><strong>{cameraStats.orientationCorrect}</strong><span>aciertos derecha/invertida</span></div></div>}
     <button className="secondary-cta" onClick={()=>setCameraStatsVersion(x=>x+1)}>Actualizar estadísticas de cámara</button>
 
-    <div className="section-title"><h2>Funciones Beta 7</h2><span>motor geométrico individual</span></div>
-    <div className="feature-card static"><b>📷 Reconocimiento geométrico V7</b><span>Usa puntos locales, descriptores binarios orientados, correspondencias, homografía/RANSAC y verificación visual secundaria. El motor anterior permanece como respaldo.</span></div>
+    <div className="section-title"><h2>Funciones Beta 7.0.1</h2><span>motor híbrido individual</span></div>
+    <div className="feature-card static"><b>📷 Reconocimiento híbrido V7.0.1</b><span>Combina puntos locales, homografía/RANSAC y un rescate visual independiente para cartas pequeñas o con pocos rasgos locales. La orientación usa primero la geometría de la homografía y el motor anterior permanece como respaldo.</span></div>
     <div className="feature-card static"><b>✦ Aclaratorias</b><span>Añade hasta dos cartas aclaratorias por posición sin borrar la lectura original.</span></div>
     <div className="feature-card static"><b>Catálogo ampliado</b><span>Incluye decisión, trabajo, dinero, relación completa, Cruz Celta y rueda anual.</span></div>
 

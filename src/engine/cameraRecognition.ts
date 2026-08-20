@@ -1,7 +1,7 @@
 import { tarotCards, tarotCardById } from '../data/cards';
 import { cardImagePath } from '../data/cardImages';
 import type { Orientation } from '../types/tarot';
-import { recognizeGeometrically, homographyRectifiedImage } from './geometricRecognition';
+import { recognizeGeometrically, homographyRectifiedImage, homographyOrientation } from './geometricRecognition';
 
 export type CameraConfidence='HIGH'|'MEDIUM'|'LOW'|'INCONCLUSIVE';
 export type CameraOrientationConfidence='HIGH'|'MEDIUM'|'LOW'|'AMBIGUOUS';
@@ -32,7 +32,7 @@ export type CameraRecognitionResult={
   cropHypothesesTested:number;
   confidenceScore:number;
   recognitionStability:number;
-  recognitionEngine:'GEOMETRIC_V7'|'LEGACY_FALLBACK';
+  recognitionEngine:'GEOMETRIC_V7'|'HYBRID_V7_0_1'|'LEGACY_FALLBACK';
   geometricMatches:number;
   geometricInliers:number;
   geometricCoverage:number;
@@ -629,28 +629,93 @@ function geometricConfidenceScore(best:number,second:number,inliers:number,inlie
   return Math.round(clamp(absolute*.24+separation*.18+inlierStrength*.20+ratioStrength*.15+coverageStrength*.13+errorStrength*.10,0,1)*99);
 }
 
-async function geometricCandidateRows(photo:HTMLImageElement,geo:Awaited<ReturnType<typeof recognizeGeometrically>>){
+type QuickVisualMatch={
+  cardId:string;best:number;upright:number;reversed:number;orientation:Orientation;orientationConfidence:CameraOrientationConfidence;orientationMargin:number;
+};
+
+function quickVisualImages(photo:HTMLImageElement,crop:ReturnType<typeof estimateCardRect>){
+  // V7.0.1: segunda vía independiente para cartas con pocos puntos locales o
+  // fotografiadas pequeñas. No sustituye a la homografía; sirve como rescate y
+  // como voto independiente dentro del ranking híbrido.
+  const rect=crop.method==='AUTO_EDGES'?crop.rect:centerCrop(photo.width,photo.height);
+  const variants=[
+    {r:0,z:1.00,dx:0,dy:0},{r:0,z:1.18,dx:0,dy:0},
+    {r:-12,z:1.08,dx:0,dy:0},{r:12,z:1.08,dx:0,dy:0},
+    {r:-24,z:1.12,dx:0,dy:0},{r:24,z:1.12,dx:0,dy:0},
+    {r:0,z:1.10,dx:-.055,dy:0},{r:0,z:1.10,dx:.055,dy:0},
+  ];
+  return variants.map(v=>renderNormalized(photo,rect,v.r,v.z,v.dx,v.dy));
+}
+
+async function quickVisualRanking(photo:HTMLImageElement,crop:ReturnType<typeof estimateCardRect>){
+  const queries=descriptorOrientations(quickVisualImages(photo,crop));
+  const rows:QuickVisualMatch[]=[];
+  for(const card of tarotCards){
+    try{
+      const refs=await referenceDescriptors(card.id);
+      const upright=queries.original.length?Math.max(...queries.original.map(q=>multiReferenceSimilarity(q,refs))):0;
+      const reversed=queries.rotated.length?Math.max(...queries.rotated.map(q=>multiReferenceSimilarity(q,refs))):0;
+      const orientation=reversed>upright?'REVERSED':'UPRIGHT';
+      const high=Math.max(upright,reversed),low=Math.min(upright,reversed);
+      rows.push({cardId:card.id,best:high,upright,reversed,orientation,orientationConfidence:orientationConfidenceFor(high,low),orientationMargin:Math.round(Math.abs(high-low)*1000)/10});
+    }catch{/* el diagnóstico 78/78 sigue siendo independiente */}
+  }
+  return rows.sort((a,b)=>b.best-a.best);
+}
+
+function homographyOrientationConfidence(value:number):CameraOrientationConfidence{
+  if(value>=.70)return 'HIGH';if(value>=.45)return 'MEDIUM';if(value>=.20)return 'LOW';return 'AMBIGUOUS';
+}
+
+function hybridConfidence(best:number,second:number,g?:Awaited<ReturnType<typeof recognizeGeometrically>>['matches'][number],visualBest=0):CameraConfidence{
+  const margin=best-second;const geometricSupport=!!g&&g.inliers>=7&&g.inlierRatio>=.28;const visualSupport=visualBest>=.64;
+  if(best>=.72&&margin>=.055&&(geometricSupport||visualBest>=.72))return 'HIGH';
+  if(best>=.60&&margin>=.026&&(geometricSupport||visualSupport))return 'MEDIUM';
+  if(best>=.50&&(geometricSupport||visualBest>=.57))return 'LOW';
+  return 'INCONCLUSIVE';
+}
+
+async function geometricCandidateRows(photo:HTMLImageElement,geo:Awaited<ReturnType<typeof recognizeGeometrically>>,quick:QuickVisualMatch[]){
+  const quickById=new Map(quick.map(row=>[row.cardId,row]));
   const rows:(CameraCandidate&{raw:number})[]=[];
   for(let index=0;index<geo.matches.length;index++){
-    const g=geo.matches[index];
-    let orientation:Orientation='UPRIGHT',orientationConfidence:CameraOrientationConfidence='AMBIGUOUS',orientationMargin=0;
-    let visualNormalized=.25;
-    if(g.homography&&index<24){
+    const g=geo.matches[index];const quickRow=quickById.get(g.cardId);
+    let orientation:Orientation=quickRow?.orientation??'UPRIGHT';
+    let orientationConfidence:CameraOrientationConfidence=quickRow?.orientationConfidence??'AMBIGUOUS';
+    let orientationMargin=quickRow?.orientationMargin??0;
+    let rectifiedVisual=0;
+    if(g.homography&&index<36){
       try{
         const rectified=homographyRectifiedImage(photo,g.homography,ANALYSIS_W,ANALYSIS_H);
         const queries=descriptorOrientations([rectified]);
         const refs=await referenceDescriptors(g.cardId);
         const upright=queries.original.length?Math.max(...queries.original.map(q=>multiReferenceSimilarity(q,refs))):0;
         const reversed=queries.rotated.length?Math.max(...queries.rotated.map(q=>multiReferenceSimilarity(q,refs))):0;
-        orientation=reversed>upright?'REVERSED':'UPRIGHT';
         const high=Math.max(upright,reversed),low=Math.min(upright,reversed);
-        orientationMargin=Math.round(Math.abs(high-low)*1000)/10;
-        orientationConfidence=orientationConfidenceFor(high,low);
-        visualNormalized=clamp((high-.44)/.43,0,1);
+        rectifiedVisual=high;
+        // La orientación se deriva primero de la propia homografía. Esto evita
+        // que una carta invertida sea marcada derecha por similitud visual.
+        const geoOrientation=homographyOrientation(g.homography);
+        if(geoOrientation&&geoOrientation.confidence>=.18){
+          orientation=geoOrientation.orientation;
+          orientationConfidence=homographyOrientationConfidence(geoOrientation.confidence);
+          orientationMargin=Math.round(geoOrientation.confidence*1000)/10;
+        }else{
+          orientation=reversed>upright?'REVERSED':'UPRIGHT';
+          orientationConfidence=orientationConfidenceFor(high,low);
+          orientationMargin=Math.round(Math.abs(high-low)*1000)/10;
+        }
       }catch{/* La geometría sigue siendo válida aunque falle la verificación secundaria. */}
     }
-    const geometryWeight=g.homography?.length?0.82:0.94;
-    const raw=clamp(g.score*geometryWeight+visualNormalized*(1-geometryWeight),0,1);
+    const quickNorm=quickRow?clamp((quickRow.best-.47)/.31,0,1):0;
+    const rectifiedNorm=rectifiedVisual?clamp((rectifiedVisual-.45)/.34,0,1):0;
+    const visualNormalized=Math.max(rectifiedNorm,quickNorm*.96);
+    let geometryWeight=.18;
+    if(g.homography&&g.inliers>=12&&g.inlierRatio>=.40&&g.coverage>=.14)geometryWeight=.64;
+    else if(g.homography&&g.inliers>=7)geometryWeight=.52;
+    else if(g.homography)geometryWeight=.42;
+    const agreementBoost=g.score>=.38&&visualNormalized>=.55?.03:0;
+    const raw=clamp(g.score*geometryWeight+visualNormalized*(1-geometryWeight)+agreementBoost,0,1);
     rows.push({cardId:g.cardId,cardName:g.cardName,orientation,orientationConfidence,orientationMargin,score:Math.round(raw*99),rank:0,raw});
   }
   rows.sort((a,b)=>b.raw-a.raw);
@@ -665,32 +730,41 @@ export async function recognizeTarotCard(file:File,onProgress?:(done:number,tota
 
   const geo=await recognizeGeometrically(photo,onProgress);
   if(geo.multipleSuspected)throw new Error('MULTIPLE_CARDS_SUSPECTED');
+  // Ranking híbrido profesional: geometría local + verificación visual global.
+  // La segunda vía rescata cartas pequeñas, simples o con pocos keypoints.
+  const quick=await quickVisualRanking(photo,crop);
   const topGeo=geo.matches[0];
-  const hasUsableGeometry=!!topGeo?.homography&&topGeo.inliers>=6&&topGeo.inlierRatio>=.26&&topGeo.score>=.34;
-  if(!hasUsableGeometry){
-    // V7 no oculta un fallo geométrico: cae explícitamente al motor anterior.
+  const hasUsableGeometry=!!topGeo?.homography&&topGeo.inliers>=5&&topGeo.inlierRatio>=.22&&topGeo.score>=.27;
+  const visualTop=quick[0]?.best??0;
+  if(!hasUsableGeometry&&visualTop<.555){
+    // Si ninguna de las dos vías obtiene evidencia suficiente, se mantiene el
+    // respaldo anterior en vez de inventar una identidad.
     return legacyRecognizeTarotCard(photo,crop,onProgress,{});
   }
 
-  const all=await geometricCandidateRows(photo,geo);
+  const all=await geometricCandidateRows(photo,geo,quick);
   const bestRaw=all[0]?.score/99||0,secondRaw=all[1]?.score/99||0;
   const bestGeo=geo.matches.find(x=>x.cardId===all[0]?.cardId)??topGeo;
-  const secondGeo=geo.matches.find(x=>x.cardId===all[1]?.cardId)??geo.matches[1];
-  const confidence=geometricConfidence(bestGeo.score,secondGeo?.score??0,bestGeo.inliers,bestGeo.inlierRatio,bestGeo.coverage);
-  const stability=clamp(bestGeo.inlierRatio*.52+bestGeo.coverage*.34+clamp(1-bestGeo.reprojectionError/.06,0,1)*.14,0,1);
+  const quickBestForWinner=quick.find(x=>x.cardId===all[0]?.cardId)?.best??0;
+  const confidence=hybridConfidence(bestRaw,secondRaw,bestGeo,quickBestForWinner);
+  const geometricStability=bestGeo?clamp(bestGeo.inlierRatio*.46+bestGeo.coverage*.28+clamp(1-bestGeo.reprojectionError/.06,0,1)*.12,0,1):0;
+  const visualSeparation=clamp((bestRaw-secondRaw)/.12,0,1);
+  const stability=clamp(geometricStability+visualSeparation*.14,0,1);
   const framingStatus:CameraFramingStatus=crop.status==='MULTIPLE_SUSPECTED'?'ADJUST':crop.status;
-  const framingMessage=crop.status==='MULTIPLE_SUSPECTED'?'La preevaluación vio una geometría compleja, pero el motor geométrico encontró una hipótesis individual. Revisa el candidato antes de confirmar.':crop.message;
+  const framingMessage=crop.status==='MULTIPLE_SUSPECTED'?'La preevaluación vio una geometría compleja, pero el motor híbrido encontró una hipótesis individual. Revisa el candidato antes de confirmar.':crop.message;
+  const scoreBase=geometricConfidenceScore(bestRaw,secondRaw,bestGeo?.inliers??0,bestGeo?.inlierRatio??0,bestGeo?.coverage??0,bestGeo?.reprojectionError??1);
+  const visualEvidence=clamp((quickBestForWinner-.52)/.25,0,1);
   return {
     candidates:all.slice(0,12),all,confidence,
     margin:Math.round(Math.max(0,bestRaw-secondRaw)*1000)/10,
-    cropMethod:topGeo.homography?'AUTO_EDGES':crop.method,
-    cropQuality:Math.max(crop.quality,Math.round(clamp(topGeo.coverage/.55,0,1)*100)),
+    cropMethod:bestGeo?.homography?'AUTO_EDGES':crop.method,
+    cropQuality:Math.max(crop.quality,Math.round(clamp((bestGeo?.coverage??0)/.55,0,1)*100)),
     framingWarning:framingStatus!=='GOOD',framingStatus,framingMessage,
     cropHypothesesTested:1,
-    confidenceScore:geometricConfidenceScore(bestGeo.score,secondGeo?.score??0,bestGeo.inliers,bestGeo.inlierRatio,bestGeo.coverage,bestGeo.reprojectionError),
+    confidenceScore:Math.round(clamp(scoreBase/99*.72+visualEvidence*.28,0,1)*99),
     recognitionStability:Math.round(stability*100),
-    recognitionEngine:'GEOMETRIC_V7',geometricMatches:bestGeo.goodMatches,geometricInliers:bestGeo.inliers,
-    geometricCoverage:Math.round(bestGeo.coverage*100),reprojectionError:Math.round(bestGeo.reprojectionError*10000)/10000,
+    recognitionEngine:'HYBRID_V7_0_1',geometricMatches:bestGeo?.goodMatches??0,geometricInliers:bestGeo?.inliers??0,
+    geometricCoverage:Math.round((bestGeo?.coverage??0)*100),reprojectionError:Math.round((bestGeo?.reprojectionError??0)*10000)/10000,
   };
 }
 

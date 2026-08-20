@@ -1,14 +1,7 @@
-ORÁCULO TAROT v1.0.0 Beta 7 — MOTOR GEOMÉTRICO INDIVIDUAL
+ORÁCULO TAROT v1.0.0 Beta 7.0.1 — MOTOR HÍBRIDO INDIVIDUAL
 
-1. Sube el contenido completo de esta carpeta al repositorio naturavidabo/oraculo-tarot.
-2. Conserva la carpeta .github/workflows y el workflow de GitHub Pages.
-3. Confirma que package.json diga 1.0.0-beta.7.
-4. GitHub Actions instalará dependencias y descargará/verificará las 78 imágenes Rider–Waite locales antes del build.
-5. Espera a que Deploy to GitHub Pages termine correctamente.
-6. Instala/actualiza la PWA y realiza la batería física de Beta 7.
-
-CAMBIO PRINCIPAL
-V7 usa puntos locales + descriptores binarios + homografía/RANSAC como motor principal. El clasificador Beta 6.3 queda como verificación/fallback.
-
-PRUEBA INICIAL
-Mago · Templanza · Justicia · Hierofante · As de Copas · As de Oros. Luego Mago/Templanza inclinados y Hierofante + Templanza juntos.
+1. Sube el contenido de esta carpeta al repositorio naturavidabo/oraculo-tarot.
+2. Mantén intactas las 78 imágenes Rider-Waite locales.
+3. Confirma que package.json diga 1.0.0-beta.7.0.1.
+4. Ejecuta las validaciones del proyecto y despliega GitHub Pages.
+5. Instala/actualiza la PWA y prueba Mago, Templanza, Justicia invertida, Hierofante pequeño, As de Copas invertido, As de Oros inclinado y dos cartas juntas.
